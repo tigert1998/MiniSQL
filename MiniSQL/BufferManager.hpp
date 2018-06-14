@@ -13,12 +13,15 @@
 #include <unordered_map>
 #include <list>
 
+#include <iostream>
+
 // H is the total number of blocks in Buffer
 // S is the size (count in bytes) of one block
 template <int H, int S = 4096>
 class BufferManager {
 public:
     BufferManager();
+    ~BufferManager();
     void Open(const char *);
     const char *Read(uint32_t);
     void Write(uint32_t, const char *);
@@ -37,6 +40,16 @@ private:
     
     int valid_total, left[H + 1], right[H + 1];
 };
+
+template <int H, int S>
+BufferManager<H, S>::~BufferManager() {
+    if (fs.is_open()) {
+        for (int i = 0; i < valid_total; i++)
+            if (modified[i]) {
+                FlushBufferAtIndex(i);
+            }
+    }
+}
 
 template <int H, int S>
 void BufferManager<H, S>::ListPullIndex(int h) {
@@ -63,32 +76,38 @@ BufferManager<H, S>::BufferManager() : valid_total(0) { }
 
 template <int H, int S>
 void BufferManager<H, S>::FlushBufferAtIndex(int h) {
-    fs.seekg(offset[h]);
+    fs.seekp(offset[h]);
     fs.write(buffer[h], S);
+    fs.flush();
     modified[h] = false;
 }
 
 template <int H, int S>
 void BufferManager<H, S>::Open(const char *file_name) {
-    using std::ios;
-    for (int i = 0; i < valid_total; i++)
-        if (modified[i]) {
-            FlushBufferAtIndex(i);
-        }
-    position.clear();
-    valid_total = 0;
-    left[H] = right[H] = H;
-    
-    fs.open(file_name, ios::in);
-    if (!fs.is_open()) {
-        fs.open(file_name, ios::out);
+    using namespace std;
+    if (fs.is_open()) {
+        for (int i = 0; i < valid_total; i++)
+            if (modified[i])
+                FlushBufferAtIndex(i);
+        position.clear();
+        valid_total = 0;
+        left[H] = right[H] = H;
     }
+    
+    if (fs.is_open())
+        fs.close();
+    fs.open(file_name, ios::in);
+    if (!fs.is_open())
+        fs.open(file_name, ios::out);
+    fs.close();
     fs.open(file_name, ios::in | ios::out | ios::binary);
 }
 
 template <int H, int S>
 const char *BufferManager<H, S>::Read(uint32_t offset_in_file) {
+    using namespace std;
     auto read_into_buffer = [&](uint32_t offset_in_file, int h) {
+        fs.seekg(offset_in_file);
         fs.read(buffer[h], S);
         modified[h] = false;
         offset[h] = offset_in_file;
@@ -110,14 +129,30 @@ const char *BufferManager<H, S>::Read(uint32_t offset_in_file) {
     if (modified[h])
         FlushBufferAtIndex(h);
     position.erase(offset[h]);
+    
     read_into_buffer(offset_in_file, h);
     return buffer[h];
 }
 
 template <int H, int S>
 void BufferManager<H, S>::Write(uint32_t offset_in_file, const char *data) {
-    Read(offset_in_file);
-    int h = position[offset_in_file];
+    using namespace std;
+    int h;
+    if (position.count(offset_in_file)) {
+        h = position[offset_in_file];
+        ListPullIndex(h);
+    } else if (valid_total < H) {
+        h = valid_total++;
+        ListPullIndex(h);
+    } else {
+        h = left[H];
+        ListPullIndex(h);
+        if (modified[h])
+            FlushBufferAtIndex(h);
+        position.erase(offset[h]);
+        position[offset_in_file] = h;
+    }
+    offset[h] = offset_in_file;
     copy(data, data + S, buffer[h]);
     modified[h] = true;
 }
