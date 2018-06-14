@@ -9,17 +9,18 @@
 #pragma once
 
 #include <algorithm>
-#include <fstream>
 #include <unordered_map>
 #include <list>
 
-#include <iostream>
+#include "file_manager.hpp"
 
 // H is the total number of blocks in Buffer
 // S is the size (count in bytes) of one block
-template <int H, int S = 4096>
+template <int H, int S = 8192>
 class BufferManager {
 public:
+    static BufferManager<H, S> shared;
+    
     BufferManager();
     ~BufferManager();
     void Open(const char *);
@@ -40,6 +41,9 @@ private:
     
     int valid_total, left[H + 1], right[H + 1];
 };
+
+template <int H, int S>
+BufferManager<H, S> BufferManager<H, S>::shared = BufferManager<H, S>();
 
 template <int H, int S>
 BufferManager<H, S>::~BufferManager() {
@@ -92,14 +96,13 @@ void BufferManager<H, S>::Open(const char *file_name) {
         position.clear();
         valid_total = 0;
         left[H] = right[H] = H;
+        fs.close();
     }
     
-    if (fs.is_open())
-        fs.close();
-    fs.open(file_name, ios::in);
-    if (!fs.is_open())
-        fs.open(file_name, ios::out);
-    fs.close();
+    FileManager &file_manager = FileManager::shared;
+    if (!file_manager.FileExistsAt(file_name)) {
+        file_manager.CreateFileAt(file_name);
+    }
     fs.open(file_name, ios::in | ios::out | ios::binary);
 }
 
