@@ -1,5 +1,5 @@
 //
-//  BufferManager.hpp
+//  buffer_manager.hpp
 //  MiniSQL
 //
 //  Created by tigertang on 2018/6/14.

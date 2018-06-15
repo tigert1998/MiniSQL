@@ -1,5 +1,5 @@
 //
-//  FileManager.hpp
+//  file_manager.hpp
 //  MiniSQL
 //
 //  Created by tigertang on 2018/6/14.

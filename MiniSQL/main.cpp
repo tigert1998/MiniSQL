@@ -8,6 +8,7 @@
 
 #include "buffer_manager.hpp"
 #include "catalog_manager.hpp"
+#include "table_item.hpp"
 
 #include <iostream>
 

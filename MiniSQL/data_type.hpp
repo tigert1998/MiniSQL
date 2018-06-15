@@ -9,13 +9,18 @@
 #pragma once
 
 #include <vector>
+#include <string>
+
+enum class DataTypeIdentifier {
+    Int, Char, Float
+};
 
 class DataType {
 public:
     const char *raw_value() {
         return raw_value_.data();
     }
-    uint64_t size() {
+    unsigned long size() {
         return raw_value_.size();
     }
     
@@ -50,14 +55,23 @@ private:
 class Char: public DataType {
 public:
     Char() = default;
-    void set_value(const char *value, int length) {
-        raw_value_.resize(length);
-        for (int i = 0; i < length; i++)
-            raw_value_[i] = value[i];
+    Char(const char *value) {
+        set_value(value);
+    }
+    void set_value(const char *value) {
+        value_ = value;
     }
     const char *value() {
-        return raw_value_.data();
+        return value_.c_str();
     }
+    const char *raw_value() {
+        return value();
+    }
+    unsigned long size() {
+        return value_.size() + 1;
+    }
+private:
+    std::string value_;
 };
 
 class Float: public DataType {
