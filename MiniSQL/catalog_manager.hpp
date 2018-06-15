@@ -9,22 +9,33 @@
 #pragma once
 
 #include <string>
+#include <exception>
 
+#include "constant.hpp"
 #include "file_manager.hpp"
 #include "table_item.hpp"
+#include "buffer_manager.hpp"
+
+#include "database_exception.h"
 
 class CatalogManager {
 public:
     static CatalogManager shared;
     CatalogManager();
-    void set_root_path(std::string);
+    void set_root_path(const std::string &);
     bool opened();
-    void CreateTable(const Table &);
+    void CreateTable(Table &);
+    void RemoveTable(const std::string &);
     
 private:
+    BufferManager<kBlockNumber, kBlockSize> &buffer_manager = BufferManager<kBlockNumber, kBlockSize>::shared;
+    FileManager &file_manager = FileManager::shared;
+    
     std::string root_path_;
     bool opened_;
-    
+    void WriteHeaderAt(const std::string &, int, uint32_t);
+    uint32_t GetHeaderAt(const std::string &, int);
+
 };
 
 CatalogManager CatalogManager::shared = CatalogManager();
@@ -35,25 +46,91 @@ bool CatalogManager::opened() {
     return opened_;
 }
 
-void CatalogManager::set_root_path(std::string path) {
+void CatalogManager::WriteHeaderAt(const std::string &identifier, int id, uint32_t value) {
     using namespace std;
-    FileManager &file_manager = FileManager::shared;
+    if (!opened_) throw RootPathError();
+    string path = root_path_ + "/" + identifier + ".header";
+    fstream fs;
+    fs.open(path, ios::out | ios::binary | ios::in);
+    fs.seekp(id * 4);
+    fs.write(Int((int) value).raw_value(), 4);
+}
+
+uint32_t CatalogManager::GetHeaderAt(const std::string &identifier, int id) {
+    using namespace std;
+    if (!opened_) throw RootPathError();
+    string path = root_path_ + "/" + identifier + ".header";
+    fstream fs;
+    fs.seekg(id * 4);
+    fs.open(path, ios::in | ios::binary);
+    char data[4];
+    fs.read(data, 4);
+    return Int(data).value();
+}
+
+void CatalogManager::set_root_path(const std::string &path) {
+    using namespace std;
+    opened_ = true;
+    root_path_ = path;
     if (!file_manager.FileExistsAt(path + "/catalog") || !file_manager.FileExistsAt(path + "/catalog.header")) {
         file_manager.CreateFileAt(path + "/catalog");
         file_manager.CreateFileAt(path + "/catalog.header");
-        fstream fs;
-        fs.open(path + "/catalog.header", ios::out | ios::binary);
-        fs.write(Int(0).raw_value(), 4);
+        WriteHeaderAt("catalog", 0, -1);
+        WriteHeaderAt("catalog", 1, 0);
     }
-    root_path_ = path;
-    opened_ = true;
 }
 
-void CatalogManager::CreateTable(const Table &table) {
+void CatalogManager::CreateTable(Table &table) {
     using namespace std;
+    if (!opened_) throw RootPathError();
     FileManager &file_manager = FileManager::shared;
     file_manager.CreateFileAt(root_path_ + "/" + table.title + ".data");
     file_manager.CreateFileAt(root_path_ + "/" + table.title + ".data.header");
-    file_manager.CreateFileAt(root_path_ + "/" + table.title + ".index");
-    file_manager.CreateFileAt(root_path_ + "/" + table.title + ".index.header");
+    WriteHeaderAt(table.title + ".data", 0, -1);
+    WriteHeaderAt(table.title + ".data", 1, 0);
+    
+    string catalog_file_path = root_path_ + "/catalog";
+    buffer_manager.Open(catalog_file_path);
+    
+    uint32_t valid_head = GetHeaderAt("catalog", 0), invalid_head = GetHeaderAt("catalog", 1);
+    
+    static char data[kBlockSize];
+    
+    uint32_t i;
+    for (i = valid_head; i != -1; i = Int(buffer_manager.Read(i)).value()) {
+        const char *start = buffer_manager.Read(i);
+        const char *s = start;
+        int total_tables = Int(s + 4).value();
+        s += 8;
+        for (int j = 0; j < total_tables; j++)
+            s += Table(s).size();
+        if (kBlockSize - (s - start) >= table.size()) break;
+    }
+    if (i == -1) {
+        // there's no valid block that satisfies the requirments
+        memcpy(data, Int(valid_head).raw_value(), 4);
+        memcpy(data + 4, Int(1).raw_value(), 4);
+        memcpy(data + 8, table.raw_value().data(), table.raw_value().size());
+        valid_head = invalid_head;
+        invalid_head = Int(buffer_manager.Read(invalid_head)).value();
+        buffer_manager.Write(valid_head, data);
+    } else {
+        // append one schema to block whose offset is i
+        int total_blocks = Int(data + 4).value() + 1;
+        memcpy(data, buffer_manager.Read(i), kBlockSize);
+        memcpy(data + 4, Int(total_blocks).raw_value(), 4);
+        char *s = data + 8;
+        for (int j = 1; j <= total_blocks - 1; j++) {
+            s += Table(s).size();
+        }
+        memcpy(s, table.raw_value().data(), table.size());
+        buffer_manager.Write(i, data);
+    }
+    
+    WriteHeaderAt("catalog", 0, valid_head);
+    WriteHeaderAt("catalog", 1, invalid_head);
+}
+
+void CatalogManager::RemoveTable(const std::string &table_name) {
+    
 }

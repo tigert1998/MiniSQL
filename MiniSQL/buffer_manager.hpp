@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <list>
+#include <string>
 
 #include "file_manager.hpp"
 
@@ -23,7 +24,7 @@ public:
     
     BufferManager();
     ~BufferManager();
-    void Open(const char *);
+    void Open(const std::string &);
     const char *Read(uint32_t);
     void Write(uint32_t, const char *);
     
@@ -87,7 +88,7 @@ void BufferManager<H, S>::FlushBufferAtIndex(int h) {
 }
 
 template <int H, int S>
-void BufferManager<H, S>::Open(const char *file_name) {
+void BufferManager<H, S>::Open(const std::string &file_name) {
     using namespace std;
     if (fs.is_open()) {
         for (int i = 0; i < valid_total; i++)
