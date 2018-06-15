@@ -17,9 +17,16 @@ public:
     }
 };
 
-class TableNotExistError: public std::exception {
+class TableNotExistsError: public std::exception {
 public:
     const char *what() const noexcept {
         return "Table not exists.";
+    }
+};
+
+class TableAlreadyExistsError: public std::exception {
+public:
+    const char *what() const noexcept {
+        return "Table has already existed.";
     }
 };

@@ -10,14 +10,13 @@
 
 #include <string>
 #include <exception>
+#include <tuple>
 
 #include "constant.hpp"
 #include "file_manager.hpp"
 #include "table_item.hpp"
 #include "buffer_manager.hpp"
 #include "database_exception.hpp"
-
-#include "debug_util.hpp"
 
 class CatalogManager {
 public:
@@ -27,6 +26,7 @@ public:
     bool opened();
     void CreateTable(Table &);
     void RemoveTable(const std::string &);
+    std::tuple<bool, uint32_t, int> LocateTable(const std::string &);
     
 private:
     BufferManager<kBlockNumber, kBlockSize> &buffer_manager = BufferManager<kBlockNumber, kBlockSize>::shared;
@@ -81,9 +81,35 @@ void CatalogManager::set_root_path(const std::string &path) {
     }
 }
 
+std::tuple<bool, uint32_t, int> CatalogManager::LocateTable(const std::string &title) {
+    if (!opened_) throw RootPathError();
+    
+    auto valid_head = GetHeaderAt("catalog", 0);
+    auto fail_tuple = std::tuple<bool, uint32_t, int>(false, 0, 0);
+    buffer_manager.Open(root_path_ + "/catalog");
+    for (auto i = valid_head; i != -1; i = Int(buffer_manager.Read(i)).value()) {
+        const char *start = buffer_manager.Read(i), *s = start;
+        auto table_total = Int(s + 4).value();
+        s += 8;
+        for (int j = 0; j < table_total; j++) {
+            auto table = Table(s);
+            if (table.title == title) {
+                return std::tuple<bool, uint32_t, int>(true, i, s - start);
+            }
+            s += table.size();
+        }
+    }
+    return fail_tuple;
+}
+
 void CatalogManager::CreateTable(Table &table) {
     using namespace std;
     if (!opened_) throw RootPathError();
+    
+    bool exists;
+    tie(exists, ignore, ignore) = LocateTable(table.title);
+    if (exists) throw TableAlreadyExistsError();
+    
     FileManager &file_manager = FileManager::shared;
     file_manager.CreateFileAt(root_path_ + "/" + table.title + ".data");
     file_manager.CreateFileAt(root_path_ + "/" + table.title + ".data.header");
@@ -91,7 +117,6 @@ void CatalogManager::CreateTable(Table &table) {
     WriteHeaderAt(table.title + ".data", 1, 0);
     
     string catalog_file_path = root_path_ + "/catalog";
-    buffer_manager.Open(catalog_file_path);
     
     uint32_t valid_head = GetHeaderAt("catalog", 0), invalid_head = GetHeaderAt("catalog", 1);
     
@@ -136,5 +161,20 @@ void CatalogManager::CreateTable(Table &table) {
 }
 
 void CatalogManager::RemoveTable(const std::string &table_name) {
+    using namespace std;
+    if (!opened_) throw RootPathError();
     
+    bool exists;
+    int offset_in_file, offset_in_block;
+    tie(exists, offset_in_file, offset_in_block) = LocateTable(table_name);
+    if (!exists) throw TableNotExistsError();
+    
+    static char data[kBlockSize];
+    memcpy(data, buffer_manager.Read(offset_in_file), kBlockSize);
+    auto total = Int(data + 4).value();
+    memcpy(data + 4, Int(total - 1).raw_value(), 4);
+    buffer_manager.Write(offset_in_file, data);
+    
+    remove((root_path_ + "/" + table_name + ".data").c_str());
+    remove((root_path_ + "/" + table_name + ".data.header").c_str());
 }
