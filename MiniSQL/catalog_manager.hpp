@@ -11,19 +11,29 @@
 #include <string>
 
 #include "file_manager.hpp"
-#include "data_type.hpp"
+#include "table_item.hpp"
 
 class CatalogManager {
 public:
     static CatalogManager shared;
+    CatalogManager();
     void set_root_path(std::string);
+    bool opened();
+    void CreateTable(const Table &);
     
 private:
     std::string root_path_;
+    bool opened_;
     
 };
 
 CatalogManager CatalogManager::shared = CatalogManager();
+
+CatalogManager::CatalogManager(): opened_(false) { }
+
+bool CatalogManager::opened() {
+    return opened_;
+}
 
 void CatalogManager::set_root_path(std::string path) {
     using namespace std;
@@ -36,4 +46,14 @@ void CatalogManager::set_root_path(std::string path) {
         fs.write(Int(0).raw_value(), 4);
     }
     root_path_ = path;
+    opened_ = true;
+}
+
+void CatalogManager::CreateTable(const Table &table) {
+    using namespace std;
+    FileManager &file_manager = FileManager::shared;
+    file_manager.CreateFileAt(root_path_ + "/" + table.title + ".data");
+    file_manager.CreateFileAt(root_path_ + "/" + table.title + ".data.header");
+    file_manager.CreateFileAt(root_path_ + "/" + table.title + ".index");
+    file_manager.CreateFileAt(root_path_ + "/" + table.title + ".index.header");
 }

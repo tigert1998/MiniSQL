@@ -15,9 +15,13 @@ class FileManager {
 public:
     static FileManager shared;
     bool FileExistsAt(const char *);
-    void CreateFileAt(const char *);
     bool FileExistsAt(const std::string &);
+    
+    void CreateFileAt(const char *);
     void CreateFileAt(const std::string &);
+    
+    unsigned long FileSizeAt(const char *);
+    unsigned long FileSizeAt(const std::string &);
 };
 
 FileManager FileManager::shared = FileManager();
@@ -38,3 +42,16 @@ bool FileManager::FileExistsAt(const std::string &path) {
 void FileManager::CreateFileAt(const std::string &path) {
     CreateFileAt(path.c_str());
 }
+
+unsigned long FileManager::FileSizeAt(const char *path) {
+    using namespace std;
+    fstream fs;
+    fs.open(path, ios::in | ios::binary);
+    fs.seekg(0, ios::end);
+    return fs.tellg();
+}
+
+unsigned long FileManager::FileSizeAt(const std::string &path) {
+    return FileSizeAt(path.c_str());
+}
+

@@ -10,7 +10,7 @@
 
 #include <string>
 
-// the path should contain two files file_name.index and file_name.index.list
+// the path should contain two files file_name.index and file_name.index.header
 
 template <
 class IndexManager {
