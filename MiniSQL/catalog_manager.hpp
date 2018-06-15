@@ -15,8 +15,9 @@
 #include "file_manager.hpp"
 #include "table_item.hpp"
 #include "buffer_manager.hpp"
+#include "database_exception.hpp"
 
-#include "database_exception.h"
+#include "debug_util.hpp"
 
 class CatalogManager {
 public:
@@ -61,8 +62,8 @@ uint32_t CatalogManager::GetHeaderAt(const std::string &identifier, int id) {
     if (!opened_) throw RootPathError();
     string path = root_path_ + "/" + identifier + ".header";
     fstream fs;
-    fs.seekg(id * 4);
     fs.open(path, ios::in | ios::binary);
+    fs.seekg(id * 4);
     char data[4];
     fs.read(data, 4);
     return Int(data).value();
@@ -112,7 +113,10 @@ void CatalogManager::CreateTable(Table &table) {
         memcpy(data + 4, Int(1).raw_value(), 4);
         memcpy(data + 8, table.raw_value().data(), table.raw_value().size());
         valid_head = invalid_head;
-        invalid_head = Int(buffer_manager.Read(invalid_head)).value();
+        if (invalid_head == file_manager.FileSizeAt(catalog_file_path))
+            invalid_head += kBlockSize;
+        else
+            invalid_head = Int(buffer_manager.Read(invalid_head)).value();
         buffer_manager.Write(valid_head, data);
     } else {
         // append one schema to block whose offset is i

@@ -1,5 +1,5 @@
 //
-//  database_exception.h
+//  database_exception.hpp
 //  MiniSQL
 //
 //  Created by tigertang on 2018/6/15.
