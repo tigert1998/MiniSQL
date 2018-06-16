@@ -13,45 +13,33 @@
 
 class FileManager {
 public:
-    static FileManager shared;
-    bool FileExistsAt(const char *);
-    bool FileExistsAt(const std::string &);
+    const static FileManager shared;
+    bool FileExistsAt(const std::string &) const;
+    void CreateFileAt(const std::string &) const;
+    uint32_t FileSizeAt(const std::string &) const;
+    void RemoveFileAt(const std::string &) const;
     
-    void CreateFileAt(const char *);
-    void CreateFileAt(const std::string &);
-    
-    unsigned long FileSizeAt(const char *);
-    unsigned long FileSizeAt(const std::string &);
 };
 
-FileManager FileManager::shared = FileManager();
+const FileManager FileManager::shared = FileManager();
 
-bool FileManager::FileExistsAt(const char *path) {
+bool FileManager::FileExistsAt(const std::string &path) const {
     std::ifstream is(path);
     return is.is_open();
 }
 
-void FileManager::CreateFileAt(const char *path) {
+void FileManager::CreateFileAt(const std::string &path) const {
     std::ofstream os(path);
 }
 
-bool FileManager::FileExistsAt(const std::string &path) {
-    return FileExistsAt(path.c_str());
-}
-
-void FileManager::CreateFileAt(const std::string &path) {
-    CreateFileAt(path.c_str());
-}
-
-unsigned long FileManager::FileSizeAt(const char *path) {
+uint32_t FileManager::FileSizeAt(const std::string &path) const {
     using namespace std;
     fstream fs;
     fs.open(path, ios::in | ios::binary);
     fs.seekg(0, ios::end);
-    return fs.tellg();
+    return (uint32_t) fs.tellg();
 }
 
-unsigned long FileManager::FileSizeAt(const std::string &path) {
-    return FileSizeAt(path.c_str());
+void FileManager::RemoveFileAt(const std::string &path) const {
+    remove(path.c_str());
 }
-

@@ -21,14 +21,8 @@ const string root_path = "/Users/tigertang/Desktop/database";
 
 int main() {
 
-//    catalog_manager.set_root_path(root_path);
-//    catalog_manager.RemoveTable("sample_table");
-    ShowTableSchemaInFile(root_path);
-    
-//    ShowTableSchemaInFile(root_path);
-//    catalog_manager.set_root_path(root_path);
-//
-//
+    catalog_manager.set_root_path(root_path);
+
 //    Table table;
 //    table.title = "another_table";
 //    auto column = Column();
@@ -46,5 +40,6 @@ int main() {
 //
 //
 //    catalog_manager.CreateTable(table);
+    catalog_manager.RemoveTable("another_table");
     return 0;
 }

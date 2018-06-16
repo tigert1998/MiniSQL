@@ -100,7 +100,7 @@ void BufferManager<H, S>::Open(const std::string &file_name) {
         fs.close();
     }
     
-    FileManager &file_manager = FileManager::shared;
+    const FileManager &file_manager = FileManager::shared;
     if (!file_manager.FileExistsAt(file_name)) {
         file_manager.CreateFileAt(file_name);
     }
