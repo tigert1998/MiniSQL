@@ -10,6 +10,7 @@
 #include "catalog_manager.hpp"
 #include "table_item.hpp"
 #include "debug_util.hpp"
+#include "b_plus_tree.hpp"
 
 #include <iostream>
 
