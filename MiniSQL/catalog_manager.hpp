@@ -96,6 +96,7 @@ void CatalogManager::CreateTable(const Table &table) const {
         new_column.AddMember("is_indexed", c.is_indexed, alloc);
         new_column.AddMember("is_unique", c.is_unique, alloc);
         new_column.AddMember("type", static_cast<int>(c.type), alloc);
+        new_column.AddMember("size", c.size, alloc);
         new_table.AddMember(StringRef(c.title.c_str()), new_column, alloc);
     }
     doc["table"].AddMember(StringRef(table.title.c_str()), new_table, alloc);

@@ -13,20 +13,34 @@
 class RootPathError: public std::exception {
 public:
     const char *what() const noexcept {
-        return "Database root path is not appropriately seted.";
+        return "Database root path is not appropriately seted";
     }
 };
 
 class TableNotExistsError: public std::exception {
 public:
     const char *what() const noexcept {
-        return "Table not exists.";
+        return "Table not exists";
     }
 };
 
 class TableAlreadyExistsError: public std::exception {
 public:
     const char *what() const noexcept {
-        return "Table has already existed.";
+        return "Table has already existed";
+    }
+};
+
+class TypeError: public std::exception {
+public:
+    const char *what() const noexcept {
+        return "Input type is not correct";
+    }
+};
+
+class CharLengthExceededError: public std::exception {
+public:
+    const char *what() const noexcept {
+        return "Char length exceeds its maximum size";
     }
 };

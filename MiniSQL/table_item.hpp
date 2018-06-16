@@ -12,11 +12,13 @@
 #include <vector>
 
 #include "data_type.hpp"
+#include "database_exception.hpp"
 
 struct Column {
     std::string title;
     bool is_primary, is_indexed, is_unique;
     DataTypeIdentifier type;
+    uint64_t size;
     
 };
 
@@ -30,11 +32,28 @@ class Record {
 public:
     Record() = delete;
     Record(const Table &);
+    void Reset();
+    template <typename T> void Feed(const T &);
     
 private:
     const Table &schema;
-    std::vector<char> raw_value();
+    std::vector<char> raw_value_;
+    int column_id;
     
 };
 
-Record::Record(const Table &schema): schema(schema) { }
+Record::Record(const Table &schema): schema(schema), column_id(0) {}
+
+void Record::Reset() {
+    column_id = 0;
+}
+
+template <typename T>
+void Record::Feed(const T &value) {
+    const auto &c = schema.columns[column_id];
+    if (value->GetType() != c.type || value->size() != c.size) {
+        throw TypeError();
+    }
+    
+    column_id++;
+}

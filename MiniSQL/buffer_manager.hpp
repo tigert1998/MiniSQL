@@ -25,8 +25,8 @@ public:
     BufferManager();
     ~BufferManager();
     void Open(const std::string &);
-    const char *Read(uint32_t);
-    void Write(uint32_t, const char *);
+    const char *Read(uint64_t);
+    void Write(uint64_t, const char *);
     
 private:
     void FlushBufferAtIndex(int);
@@ -36,9 +36,9 @@ private:
     
     char buffer[H][S];
     bool modified[H];
-    uint32_t offset[H];
+    uint64_t offset[H];
     std::fstream fs;
-    std::unordered_map<uint32_t, int> position;
+    std::unordered_map<uint64_t, int> position;
     
     int valid_total, left[H + 1], right[H + 1];
 };
@@ -108,9 +108,9 @@ void BufferManager<H, S>::Open(const std::string &file_name) {
 }
 
 template <int H, int S>
-const char *BufferManager<H, S>::Read(uint32_t offset_in_file) {
+const char *BufferManager<H, S>::Read(uint64_t offset_in_file) {
     using namespace std;
-    auto read_into_buffer = [&](uint32_t offset_in_file, int h) {
+    auto read_into_buffer = [&](uint64_t offset_in_file, int h) {
         fs.seekg(offset_in_file);
         fs.read(buffer[h], S);
         modified[h] = false;
@@ -139,7 +139,7 @@ const char *BufferManager<H, S>::Read(uint32_t offset_in_file) {
 }
 
 template <int H, int S>
-void BufferManager<H, S>::Write(uint32_t offset_in_file, const char *data) {
+void BufferManager<H, S>::Write(uint64_t offset_in_file, const char *data) {
     using namespace std;
     int h;
     if (position.count(offset_in_file)) {

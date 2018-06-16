@@ -11,6 +11,8 @@
 #include <vector>
 #include <string>
 
+#include "database_exception.hpp"
+
 enum class DataTypeIdentifier {
     Int, Char, Float
 };
@@ -20,9 +22,10 @@ public:
     const char *raw_value() {
         return raw_value_.data();
     }
-    unsigned long size() {
+    uint64_t size() {
         return raw_value_.size();
     }
+    virtual DataTypeIdentifier GetType() = 0;
     
 protected:
     std::vector<char> raw_value_;
@@ -30,7 +33,9 @@ protected:
 
 class Int: public DataType {
 public:
-    Int() = default;
+    Int() {
+        raw_value_.resize(sizeof(int));
+    }
     Int(int value) {
         set_value(value);
     }
@@ -47,36 +52,54 @@ public:
     int value() {
         return value_;
     }
+    DataTypeIdentifier GetType() {
+        return DataTypeIdentifier::Int;
+    }
     
 private:
     int value_;
 };
 
+// char(N) occupies (N + 1) bytes in total
+// and it can represent string whose length <= N
+template <int N>
 class Char: public DataType {
 public:
-    Char() = default;
-    Char(const char *value) {
+    Char() {
+        raw_value_.resize(N + 1);
+    }
+    Char(const std::string &value) {
+        if (value.length() >= N + 1)
+            throw CharLengthExceededError();
         set_value(value);
     }
-    void set_value(const char *value) {
+    Char(const char *bits) {
+        raw_value_.resize(N + 1);
+        strcpy(raw_value_.data(), bits);
+    }
+    void set_value(const std::string &value) {
+        if (value.length() >= N + 1)
+            throw CharLengthExceededError();
         value_ = value;
+        raw_value_.resize(N + 1);
+        strcpy(raw_value_.data(), value.c_str());
     }
-    const char *value() {
-        return value_.c_str();
+    std::string value() {
+        return value_;
     }
-    const char *raw_value() {
-        return value();
+    DataTypeIdentifier GetType() {
+        return DataTypeIdentifier::Char;
     }
-    unsigned long size() {
-        return value_.size() + 1;
-    }
+    
 private:
     std::string value_;
 };
 
 class Float: public DataType {
 public:
-    Float() = default;
+    Float() {
+        raw_value_.resize(sizeof(float));
+    }
     Float(float value) {
         set_value(value);
     }
@@ -92,6 +115,9 @@ public:
     }
     float value() {
         return value_;
+    }
+    DataTypeIdentifier GetType() {
+        return DataTypeIdentifier::Float;
     }
     
 private:
