@@ -46,6 +46,7 @@ Record::Record(const Table &schema): schema(schema), column_id(0) {}
 
 void Record::Reset() {
     column_id = 0;
+    raw_value_.clear();
 }
 
 template <typename T>
@@ -54,6 +55,9 @@ void Record::Feed(const T &value) {
     if (value->GetType() != c.type || value->size() != c.size) {
         throw TypeError();
     }
-    
+    for (int i = 0; i < value->size(); i++) {
+        char tmp = value->raw_value()[i];
+        raw_value_.push_back(tmp);
+    }
     column_id++;
 }

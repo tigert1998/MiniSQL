@@ -28,6 +28,7 @@ public:
     void set_root_path(const std::string &);
     void CreateTable(const Table &) const;
     void RemoveTable(const std::string &) const;
+    Table GetTable(const std::string &) const;
     
 private:
     const FileManager &file_manager = FileManager::shared;
@@ -78,6 +79,30 @@ void CatalogManager::set_root_path(const std::string &root_path) {
         doc.Parse(json);
         ExportJSON(doc);
     }
+}
+
+Table CatalogManager::GetTable(const std::string &title) const {
+    using namespace rapidjson;
+    if (!is_valid())
+        throw RootPathError();
+    Document doc = ImportJSON();
+    if (!doc["table"].HasMember(title.c_str()))
+        throw TableNotExistsError();
+    auto obj = doc["table"].GetObject()[title.c_str()].GetObject();
+    Table result;
+    result.title = title;
+    for (auto &it : obj) {
+        Column c;
+        c.title = it.name.GetString();
+        auto column_obj = it.value.GetObject();
+        c.is_primary = column_obj["is_primary"].GetBool();
+        c.is_indexed = column_obj["is_indexed"].GetBool();
+        c.is_unique = column_obj["is_unique"].GetBool();
+        c.type = static_cast<DataTypeIdentifier>(column_obj["type"].GetInt());
+        c.size = column_obj["size"].GetInt();
+        result.columns.push_back(c);
+    }
+    return result;
 }
 
 void CatalogManager::CreateTable(const Table &table) const {
