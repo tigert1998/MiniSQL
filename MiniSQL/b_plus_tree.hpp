@@ -14,22 +14,26 @@
 
 #include "table_item.hpp"
 #include "constant.hpp"
+#include "node.hpp"
 
 // KeyType should be Int, Char or Float
 template <typename KeyType>
 class BPlusTree {
 public:
     BPlusTree() = delete;
-    BPlusTree(std::function<KeyType(Record)>, const std::string &);
+    BPlusTree(int, std::function<KeyType(Record)>, const std::string &);
     void Insert(Record);
     void Erase(KeyType);
     
 private:
     const std::function<KeyType(Record)> get_key;
     const std::string index_path;
+    const int key_size;
     BufferManager<kBlockNumber> &buffer_manager = BufferManager<kBlockNumber>::shared;
     const FileManager &file_manager = FileManager::shared;
     void InsertRecurrsively(uint64_t, Record);
+    
+    int degree() const;
     
     uint64_t root_offset();
     uint64_t invalid_head_offset();
@@ -40,6 +44,11 @@ private:
     void DeleteBlock(uint64_t);
     
 };
+
+template <typename KeyType>
+int BPlusTree<KeyType>::degree() const {
+    return (kBlockSize + key_size - 5) / (sizeof(uint64_t) + key_size);
+}
 
 template <typename KeyType>
 uint64_t BPlusTree<KeyType>::NewBlock() {
@@ -58,7 +67,8 @@ template <typename KeyType>
 void BPlusTree<KeyType>::DeleteBlock(uint64_t offset) {
     static char data[kBlockSize];
     memcpy(data, buffer_manager.Read(offset), kBlockSize);
-    memcpy(data, Uint64_t(invalid_head_offset()).raw_value(), sizeof(uint64_t));
+    auto next_block_offset = Uint64_t(invalid_head_offset());
+    memcpy(data, next_block_offset.raw_value(), sizeof(uint64_t));
     buffer_manager.Write(offset, data);
     set_invalid_head_offset(offset);
 }
@@ -100,7 +110,7 @@ void BPlusTree<KeyType>::set_invalid_head_offset(uint64_t offset) {
 }
 
 template <typename KeyType>
-BPlusTree<KeyType>::BPlusTree(std::function<KeyType(Record)> get_key, const std::string &index_path): get_key(get_key), index_path(index_path) { }
+BPlusTree<KeyType>::BPlusTree(int key_size, std::function<KeyType(Record)> get_key, const std::string &index_path): key_size(key_size), get_key(get_key), index_path(index_path) { }
 
 template <typename KeyType>
 void BPlusTree<KeyType>::Insert(Record record) {

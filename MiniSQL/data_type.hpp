@@ -44,6 +44,11 @@ public:
         memcpy((char *) &temp, bits, sizeof(int));
         set_value(temp);
     }
+    Int(int, const char *bits) {
+        int temp;
+        memcpy((char *) &temp, bits, sizeof(int));
+        set_value(temp);
+    }
     void set_value(int value) {
         value_ = value;
         raw_value_.resize(sizeof(int));
@@ -54,9 +59,6 @@ public:
     }
     DataTypeIdentifier GetType() const {
         return DataTypeIdentifier::Int;
-    }
-    bool operator<(const Int &obj) const {
-        return value_ < obj.value();
     }
     
 private:
@@ -93,9 +95,6 @@ public:
     DataTypeIdentifier GetType() const {
         return DataTypeIdentifier::Char;
     }
-    bool operator<(const Char &obj) const {
-        return value_ < obj.value();
-    }
     
 private:
     const int n;
@@ -115,6 +114,11 @@ public:
         memcpy((char *) &temp, bits, sizeof(float));
         set_value(temp);
     }
+    Float(int, const char *bits) {
+        float temp;
+        memcpy((char *) &temp, bits, sizeof(float));
+        set_value(temp);
+    }
     void set_value(float value) {
         value_ = value;
         raw_value_.resize(sizeof(float));
@@ -125,9 +129,6 @@ public:
     }
     DataTypeIdentifier GetType() const {
         return DataTypeIdentifier::Float;
-    }
-    bool operator<(const Float &obj) const {
-        return value_ < obj.value();
     }
     
 private:
