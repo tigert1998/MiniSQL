@@ -17,14 +17,11 @@
 #include "file_manager.hpp"
 #include "table_item.hpp"
 #include "database_exception.hpp"
-#include "rapidjson/include/rapidjson/document.h"
-#include "rapidjson/include/rapidjson/writer.h"
-#include "rapidjson/include/rapidjson/stringbuffer.h"
-#include "rapidjson/include/rapidjson/rapidjson.h"
+#include "json_manager.hpp"
 
 class CatalogManager {
 public:
-    static const CatalogManager shared;
+    static CatalogManager shared;
     void set_root_path(const std::string &);
     void CreateTable(const Table &) const;
     void RemoveTable(const std::string &) const;
@@ -32,6 +29,7 @@ public:
     
 private:
     const FileManager &file_manager = FileManager::shared;
+    const JSONManager &json_manager = JSONManager::shared;
     std::string root_path_;
     bool is_valid_;
     
@@ -41,28 +39,14 @@ private:
     rapidjson::Document ImportJSON() const;
 };
 
-const CatalogManager CatalogManager::shared = CatalogManager();
+CatalogManager CatalogManager::shared = CatalogManager();
 
 void CatalogManager::ExportJSON(const rapidjson::Document &doc) const {
-    using namespace rapidjson;
-    using namespace std;
-    StringBuffer buffer;
-    Writer<StringBuffer> writer(buffer);
-    doc.Accept(writer);
-    fstream fs;
-    fs.open(json_path(), ios::out);
-    fs << buffer.GetString() << endl;
+    json_manager.ExportJSON(json_path(), doc);
 }
 
 rapidjson::Document CatalogManager::ImportJSON() const {
-    using namespace rapidjson;
-    using namespace std;
-    ifstream in(json_path());
-    istreambuf_iterator<char> beg(in), end;
-    string result(beg, end);
-    Document doc;
-    doc.Parse(result.c_str());
-    return doc;
+    return json_manager.ImportJSON(json_path());
 }
 
 const std::string CatalogManager::json_path() const {

@@ -117,7 +117,7 @@ void BPlusTree<KeyType>::Insert(KeyType key, uint64_t offset) {
     if (root_offset() == 0) {
         Node<KeyType> node(key_size, degree());
         node.is_internal = false;
-        node.total = 1;
+        node.children.resize(1);
         node.keys[0] = key;
         node.children[0] = offset;
         auto address = NewBlock();
@@ -130,5 +130,5 @@ void BPlusTree<KeyType>::Insert(KeyType key, uint64_t offset) {
 
 template <typename KeyType>
 void BPlusTree<KeyType>::InsertRecurrsively(uint64_t address, KeyType key, uint64_t offset) {
-    
+    auto node = Node<Int>(key_size, buffer_manager.Read(address));
 }

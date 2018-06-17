@@ -44,3 +44,31 @@ public:
         return "Char length exceeds its maximum size";
     }
 };
+
+class ColumnNotExistsError: public std::exception {
+public:
+    const char *what() const noexcept {
+        return "Column not exists";
+    }
+};
+
+class IndexAlreadyExistsError: public std::exception {
+public:
+    const char *what() const noexcept {
+        return "Index has already existed";
+    }
+};
+
+class IndexNotExistsError: public std::exception {
+public:
+    const char *what() const noexcept {
+        return "Index not exists";
+    }
+};
+
+class ColumnAlreadyIndexedError: public std::exception {
+public:
+    const char *what() const noexcept {
+        return "Column has already been indexed";
+    }
+};

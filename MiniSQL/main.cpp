@@ -12,28 +12,24 @@
 #include "debug_util.hpp"
 #include "b_plus_tree.hpp"
 #include "node.hpp"
+#include "index_manager.hpp"
 
 #include <iostream>
 
-CatalogManager catalog_manager;
+CatalogManager &catalog_manager = CatalogManager::shared;
+IndexManager &index_manager = IndexManager::shared;
 
 using namespace std;
 
 const string root_path = "/Users/tigertang/Desktop/database";
+const string table_name = "fuck_table";
+
 
 int main() {
-
-    Node<Int> node(5, 5);
-    node.is_internal = true;
-    for (int i = 0; i < 5; i++)
-        node.children.push_back(10086 - i);
-    for (int i = 0; i < 4; i++) {
-        string s = "key";
-        s.push_back(i + 'c');
-        node.keys.emplace_back(i + 1);
-    }
-    
-    Node<Int> another(5, node.raw_value());
-
+    index_manager.set_root_path(root_path);
+    index_manager.RemoveIndex("fuck_index");
+    // index_manager.CreateIndex("fuck_index", "fuck_table", "fuck_age");
+    // BPlusTree<Int> t(sizeof(int), root_path + "/" + table_name + ".index");
+    // t.Insert(Int(3), 0);
     return 0;
 }
