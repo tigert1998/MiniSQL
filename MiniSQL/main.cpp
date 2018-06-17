@@ -31,15 +31,25 @@ int main() {
     index_manager.CreatePrimaryIndex(table_name);
     BPlusTree<Int> t(4, root_path + "/" + table_name + ".index");
     set<int> s;
-    for (int i = 0; i < 1000; i++) {
-        int x;
-        do {
-            x = rand() % 10086;
-        } while (s.count(x));
-        t.Insert(Int(x), i + 1);
-        // cout << "======================" << endl;
-        // t.PrintTree();
+    for (int i = 0; i < 100000; i++) {
+        int x = rand() % 1000;
+        if (s.count(x) != t.Count(Int(x))) {
+            cout << "iteration = " << i << endl;
+            cout << "x = " << x << endl;
+            cout << "ans = " << boolalpha << (bool) s.count(x) << endl;
+            t.PrintTree();
+            t.Print();
+            cout << "Wrong!" << endl;
+            return 0;
+        }
+        if (s.count(x)) {
+            s.erase(x);
+            t.Erase(Int(x));
+        } else {
+            s.insert(x);
+            t.Insert(Int(x), i + 1);
+        }
     }
-    t.Print();
+    // t.Print();
     return 0;
 }

@@ -34,8 +34,9 @@ private:
     const int key_size;
     BufferManager<kBlockNumber, kBlockSize> &buffer_manager = BufferManager<kBlockNumber, kBlockSize>::shared;
     const FileManager &file_manager = FileManager::shared;
-    void InsertRecurrsively(uint64_t, KeyType, uint64_t);
-    int CountRecurrsively(uint64_t, KeyType);
+    void InsertRecursively(uint64_t, KeyType, uint64_t);
+    int CountRecursively(uint64_t, KeyType);
+    void EraseRecursively(uint64_t, KeyType);
     void SplitAtIndex(long, uint64_t);
     void MergeAtIndex(long, uint64_t);
     
@@ -51,17 +52,154 @@ private:
     
     Node<KeyType> GetNodeAt(uint64_t);
     void WriteNodeAt(uint64_t, const Node<KeyType> &);
-    void PrintTreeRecurrsively(uint64_t);
+    void PrintTreeRecursively(uint64_t);
 };
 
 template <typename KeyType>
-void BPlusTree<KeyType>::PrintTreeRecurrsively(uint64_t address) {
+void BPlusTree<KeyType>::MergeAtIndex(long i, uint64_t address) {
+    using namespace std;
+    auto node = GetNodeAt(address);
+    auto a_address = node.children[i];
+    auto b_address = i >= 1 ? node.children[i - 1] : node.children[i + 1];
+    if (i >= 1) {
+        i--;
+        swap(a_address, b_address);
+    }
+    auto a_node = GetNodeAt(a_address), b_node = GetNodeAt(b_address);
+    if (!a_node.is_internal) {
+        // leaf
+        vector<KeyType> keys;
+        vector<uint64_t> offsets;
+        copy(a_node.keys.begin(), a_node.keys.end(), back_inserter(keys));
+        copy(b_node.keys.begin(), b_node.keys.end(), back_inserter(keys));
+        copy(a_node.children.begin(), a_node.children.end(), back_inserter(offsets));
+        copy(b_node.children.begin(), b_node.children.end(), back_inserter(offsets));
+        
+        if (keys.size() <= degree() - 1) {
+            // merge a and b into one node
+            auto merged_node = Node<KeyType>(key_size, degree());
+            auto merged_address = NewBlock();
+            merged_node.is_internal = false;
+            copy(keys.begin(), keys.end(), back_inserter(merged_node.keys));
+            copy(offsets.begin(), offsets.end(), back_inserter(merged_node.children));
+            merged_node.left_sibling = a_node.left_sibling;
+            merged_node.right_sibling = b_node.right_sibling;
+            if (merged_node.left_sibling) {
+                auto temp = GetNodeAt(merged_node.left_sibling);
+                temp.right_sibling = merged_address;
+                WriteNodeAt(merged_node.left_sibling, temp);
+            }
+            if (merged_node.right_sibling) {
+                auto temp = GetNodeAt(merged_node.right_sibling);
+                temp.left_sibling = merged_address;
+                WriteNodeAt(merged_node.right_sibling, temp);
+            }
+            DeleteBlock(a_address);
+            DeleteBlock(b_address);
+            
+            node.children.erase(node.children.begin() + i);
+            node.children.erase(node.children.begin() + i);
+            node.children.insert(node.children.begin() + i, merged_address);
+            node.keys.erase(node.keys.begin() + i);
+            WriteNodeAt(address, node);
+            WriteNodeAt(merged_address, merged_node);
+        } else {
+            // share elements with each other
+            auto mid = keys.size() / 2;
+            a_node.keys.clear();
+            a_node.children.clear();
+            b_node.keys.clear();
+            b_node.children.clear();
+            copy(keys.begin(), keys.begin() + mid, back_inserter(a_node.keys));
+            copy(keys.begin() + mid, keys.end(), back_inserter(b_node.keys));
+            copy(offsets.begin(), offsets.begin() + mid, back_inserter(a_node.children));
+            copy(offsets.begin() + mid, offsets.end(), back_inserter(b_node.children));
+            node.keys[i] = keys[mid];
+            WriteNodeAt(a_address, a_node);
+            WriteNodeAt(b_address, b_node);
+            WriteNodeAt(address, node);
+        }
+    } else {
+        // internal
+        vector<KeyType> keys;
+        vector<uint64_t> children;
+        copy(a_node.keys.begin(), a_node.keys.end(), back_inserter(keys));
+        keys.push_back(node.keys[i]);
+        copy(b_node.keys.begin(), b_node.keys.end(), back_inserter(keys));
+        copy(a_node.children.begin(), a_node.children.end(), back_inserter(children));
+        copy(b_node.children.begin(), b_node.children.end(), back_inserter(children));
+        
+        if (children.size() <= degree()) {
+            // merge
+            auto merged_node = Node<KeyType>(key_size, degree());
+            auto merged_address = NewBlock();
+            merged_node.is_internal = true;
+            copy(keys.begin(), keys.end(), back_inserter(merged_node.keys));
+            copy(children.begin(), children.end(), back_inserter(merged_node.children));
+            
+            DeleteBlock(a_address);
+            DeleteBlock(b_address);
+            
+            node.children.erase(node.children.begin() + i);
+            node.children.erase(node.children.begin() + i);
+            node.children.insert(node.children.begin() + i, merged_address);
+            node.keys.erase(node.keys.begin() + i);
+            WriteNodeAt(address, node);
+            WriteNodeAt(merged_address, merged_node);
+        } else {
+            // share
+            auto mid = children.size() / 2;
+            a_node.keys.clear();
+            a_node.children.clear();
+            b_node.keys.clear();
+            b_node.children.clear();
+            
+            copy(keys.begin(), keys.begin() + mid - 1, back_inserter(a_node.keys));
+            node.keys[i] = keys[mid - 1];
+            copy(keys.begin() + mid, keys.end(), back_inserter(b_node.keys));
+            copy(children.begin(), children.begin() + mid, back_inserter(a_node.children));
+            copy(children.begin() + mid, children.end(), back_inserter(b_node.children));
+            WriteNodeAt(a_address, a_node);
+            WriteNodeAt(b_address, b_node);
+            WriteNodeAt(address, node);
+        }
+    }
+}
+
+template <typename KeyType>
+void BPlusTree<KeyType>::EraseRecursively(uint64_t address, KeyType key) {
+    using namespace std;
+    auto node = GetNodeAt(address);
+    auto key_values = node.key_values();
+    if (!node.is_internal) {
+        auto i = lower_bound(key_values.begin(), key_values.end(), key.value()) - key_values.begin();
+        node.keys.erase(node.keys.begin() + i);
+        node.children.erase(node.children.begin() + i);
+        WriteNodeAt(address, node);
+    } else {
+        // ptr is an internal node pointer
+        auto i = upper_bound(key_values.begin(), key_values.end(), key.value()) - key_values.begin();
+        auto next_address = node.children[i];
+        EraseRecursively(next_address, key);
+        auto node = GetNodeAt(next_address);
+        if (node.need_merge())
+            MergeAtIndex(i, address);
+    }
+}
+
+template <typename KeyType>
+void BPlusTree<KeyType>::Erase(KeyType key) {
+    EraseRecursively(root_offset(), key);
+}
+
+template <typename KeyType>
+void BPlusTree<KeyType>::PrintTreeRecursively(uint64_t address) {
     using namespace std;
     auto node = GetNodeAt(address);
     cout << "[node address = " << address << "]" << endl;
     node.Print();
     if (!node.is_internal) return;
-    for (auto i : node.children) PrintTreeRecurrsively(i);
+    for (auto i : node.children) PrintTreeRecursively(i);
 }
 
 template <typename KeyType>
@@ -75,7 +213,7 @@ void BPlusTree<KeyType>::PrintTree() {
         cout << "[invalid address = " << i << "]" << endl;
         i = Uint64_t(buffer_manager.Read(i)).value();
     }
-    PrintTreeRecurrsively(root_offset());
+    PrintTreeRecursively(root_offset());
 }
 
 template <typename KeyType>
@@ -98,21 +236,23 @@ void BPlusTree<KeyType>::Print() {
 }
 
 template <typename KeyType>
-int BPlusTree<KeyType>::CountRecurrsively(uint64_t address, KeyType key) {
+int BPlusTree<KeyType>::CountRecursively(uint64_t address, KeyType key) {
     auto node = GetNodeAt(address);
     auto key_values = node.key_values();
-    auto i = lower_bound(key_values.begin(), key_values.end(), key.value()) - key_values.begin();
     if (node.is_internal) {
-        return CountRecurrsively(node.children[i], key);
+        auto i = upper_bound(key_values.begin(), key_values.end(), key.value()) - key_values.begin();
+        return CountRecursively(node.children[i], key);
     } else {
-        return key_values[i] == key.value();
+        auto it = lower_bound(key_values.begin(), key_values.end(), key.value());
+        if (it == key_values.end()) return 0;
+        return *it == key.value();
     }
 }
 
 template <typename KeyType>
 int BPlusTree<KeyType>::Count(KeyType key) {
     if (root_offset() == 0) return 0;
-    return CountRecurrsively(root_offset(), key);
+    return CountRecursively(root_offset(), key);
 }
 
 template <typename KeyType>
@@ -287,9 +427,8 @@ void BPlusTree<KeyType>::Insert(KeyType key, uint64_t offset) {
         WriteNodeAt(address, node);
         set_root_offset(address);
     } else {
-        InsertRecurrsively(root_offset_, key, offset);
+        InsertRecursively(root_offset_, key, offset);
         auto root_node = GetNodeAt(root_offset_);
-        // cout << "root_node total = " << root_node.total() << endl;
         if (root_node.need_split()) {
             auto address = NewBlock();
             Node<KeyType> node(key_size, degree());
@@ -302,17 +441,16 @@ void BPlusTree<KeyType>::Insert(KeyType key, uint64_t offset) {
         }
     }
     buffer_manager.Flush();
-    // cout << "file size = " << file_manager.FileSizeAt(index_path) << endl;
 }
 
 template <typename KeyType>
-void BPlusTree<KeyType>::InsertRecurrsively(uint64_t address, KeyType key, uint64_t offset) {
+void BPlusTree<KeyType>::InsertRecursively(uint64_t address, KeyType key, uint64_t offset) {
     using namespace std;
     auto node = GetNodeAt(address);
     auto key_values = node.key_values();
     if (node.is_internal) {
-        auto i = lower_bound(key_values.begin(), key_values.end(), key.value()) - key_values.begin();
-        InsertRecurrsively(node.children[i], key, offset);
+        auto i = upper_bound(key_values.begin(), key_values.end(), key.value()) - key_values.begin();
+        InsertRecursively(node.children[i], key, offset);
         if (GetNodeAt(node.children[i]).need_split()) {
             SplitAtIndex(i, address);
         }
