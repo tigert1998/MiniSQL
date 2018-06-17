@@ -26,6 +26,7 @@ std::vector<char> DataType::raw_value_ = {};
 
 class Int: public DataType {
 public:
+    using OriginalType = int;
     Int() {}
     Int(int value): value_(value) { }
     Int(const char *bits) {
@@ -42,7 +43,7 @@ public:
     static DataTypeIdentifier GetType() {
         return DataTypeIdentifier::Int;
     }
-    const char *raw_value() {
+    const char *raw_value() const {
         raw_value_.resize(sizeof(int));
         for (int i = 0; i < sizeof(int); i++) raw_value_[i] = ((char *) &value_)[i];
         return raw_value_.data();
@@ -59,6 +60,7 @@ private:
 // and it can represent string whose length <= n
 class Char: public DataType {
 public:
+    using OriginalType = std::string;
     Char() = delete;
     Char(int n): n(n) { }
     Char(int size, const std::string &value): n(size - 1), value_(value) {
@@ -80,7 +82,7 @@ public:
     static DataTypeIdentifier GetType() {
         return DataTypeIdentifier::Char;
     }
-    const char *raw_value() {
+    const char *raw_value() const {
         raw_value_.resize(n + 1);
         strcpy(raw_value_.data(), value_.c_str());
         return raw_value_.data();
@@ -103,6 +105,7 @@ private:
 
 class Float: public DataType {
 public:
+    using OriginalType = float;
     Float() = default;
     Float(float value): value_(value) { }
     Float(const char *bits) {
@@ -119,7 +122,7 @@ public:
     static DataTypeIdentifier GetType() {
         return DataTypeIdentifier::Float;
     }
-    const char *raw_value() {
+    const char *raw_value() const {
         raw_value_.resize(sizeof(float));
         for (int i = 0; i < sizeof(float); i++) raw_value_[i] = ((char *) &value_)[i];
         return raw_value_.data();
@@ -134,6 +137,7 @@ private:
 
 class Uint64_t: public DataType {
 public:
+    using OriginalType = Uint64_t;
     Uint64_t() = default;
     Uint64_t(uint64_t value): value_(value) { }
     Uint64_t(const char *bits) {
@@ -150,7 +154,7 @@ public:
     static DataTypeIdentifier GetType() {
         return DataTypeIdentifier::Uint64_t;
     }
-    const char *raw_value() {
+    const char *raw_value() const {
         raw_value_.resize(sizeof(uint64_t));
         for (int i = 0; i < sizeof(uint64_t); i++) raw_value_[i] = ((char *) &value_)[i];
         return raw_value_.data();

@@ -27,6 +27,7 @@ public:
     void Open(const std::string &);
     const char *Read(uint64_t);
     void Write(uint64_t, const char *);
+    void Flush();
     
 private:
     void FlushBufferAtIndex(int);
@@ -34,26 +35,33 @@ private:
     void ListPushFront(int);
     void ListRemoveIndex(int);
     
+    std::string file_path;
     char buffer[H][S];
     bool modified[H];
     uint64_t offset[H];
-    std::fstream fs;
     std::unordered_map<uint64_t, int> position;
     
     int valid_total, left[H + 1], right[H + 1];
 };
 
 template <int H, int S>
+void BufferManager<H, S>::Flush() {
+    for (int i = 0; i < valid_total; i++)
+        if (modified[i]) {
+            FlushBufferAtIndex(i);
+        }
+    std::fill(modified, modified + H, false);
+}
+
+template <int H, int S>
 BufferManager<H, S> BufferManager<H, S>::shared = BufferManager<H, S>();
 
 template <int H, int S>
 BufferManager<H, S>::~BufferManager() {
-    if (fs.is_open()) {
-        for (int i = 0; i < valid_total; i++)
-            if (modified[i]) {
-                FlushBufferAtIndex(i);
-            }
-    }
+    for (int i = 0; i < valid_total; i++)
+        if (modified[i]) {
+            FlushBufferAtIndex(i);
+        }
 }
 
 template <int H, int S>
@@ -77,40 +85,41 @@ void BufferManager<H, S>::ListRemoveIndex(int h) {
 }
 
 template <int H, int S>
-BufferManager<H, S>::BufferManager() : valid_total(0) { }
+BufferManager<H, S>::BufferManager() : valid_total(0) {
+    left[H] = right[H] = H;
+}
 
 template <int H, int S>
 void BufferManager<H, S>::FlushBufferAtIndex(int h) {
+    using namespace std;
+    fstream fs;
+    fs.open(file_path, ios::in | ios::out | ios::binary);
     fs.seekp(offset[h]);
     fs.write(buffer[h], S);
-    fs.flush();
     modified[h] = false;
 }
 
 template <int H, int S>
-void BufferManager<H, S>::Open(const std::string &file_name) {
+void BufferManager<H, S>::Open(const std::string &file_path) {
     using namespace std;
-    if (fs.is_open()) {
-        for (int i = 0; i < valid_total; i++)
-            if (modified[i])
-                FlushBufferAtIndex(i);
-        position.clear();
-        valid_total = 0;
-        left[H] = right[H] = H;
-        fs.close();
-    }
+    this->file_path = file_path;
+    Flush();
+    valid_total = 0;
+    left[H] = right[H] = H;
+    position.clear();
     
     const FileManager &file_manager = FileManager::shared;
-    if (!file_manager.FileExistsAt(file_name)) {
-        file_manager.CreateFileAt(file_name);
+    if (!file_manager.FileExistsAt(file_path)) {
+        file_manager.CreateFileAt(file_path);
     }
-    fs.open(file_name, ios::in | ios::out | ios::binary);
 }
 
 template <int H, int S>
 const char *BufferManager<H, S>::Read(uint64_t offset_in_file) {
     using namespace std;
     auto read_into_buffer = [&](uint64_t offset_in_file, int h) {
+        fstream fs;
+        fs.open(file_path, ios::in | ios::binary);
         fs.seekg(offset_in_file);
         fs.read(buffer[h], S);
         modified[h] = false;
@@ -148,6 +157,7 @@ void BufferManager<H, S>::Write(uint64_t offset_in_file, const char *data) {
     } else if (valid_total < H) {
         h = valid_total++;
         ListPullIndex(h);
+        position[offset_in_file] = h;
     } else {
         h = left[H];
         ListPullIndex(h);

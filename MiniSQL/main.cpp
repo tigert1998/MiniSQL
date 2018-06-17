@@ -15,6 +15,7 @@
 #include "index_manager.hpp"
 
 #include <iostream>
+#include <set>
 
 CatalogManager &catalog_manager = CatalogManager::shared;
 IndexManager &index_manager = IndexManager::shared;
@@ -27,9 +28,18 @@ const string table_name = "fuck_table";
 
 int main() {
     index_manager.set_root_path(root_path);
-    index_manager.RemoveIndex("fuck_index");
-    // index_manager.CreateIndex("fuck_index", "fuck_table", "fuck_age");
-    // BPlusTree<Int> t(sizeof(int), root_path + "/" + table_name + ".index");
-    // t.Insert(Int(3), 0);
+    index_manager.CreatePrimaryIndex(table_name);
+    BPlusTree<Int> t(4, root_path + "/" + table_name + ".index");
+    set<int> s;
+    for (int i = 0; i < 1000; i++) {
+        int x;
+        do {
+            x = rand() % 10086;
+        } while (s.count(x));
+        t.Insert(Int(x), i + 1);
+        // cout << "======================" << endl;
+        // t.PrintTree();
+    }
+    t.Print();
     return 0;
 }
