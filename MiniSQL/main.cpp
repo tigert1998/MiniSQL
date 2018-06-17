@@ -11,6 +11,7 @@
 #include "table_item.hpp"
 #include "debug_util.hpp"
 #include "b_plus_tree.hpp"
+#include "node.hpp"
 
 #include <iostream>
 
@@ -22,28 +23,15 @@ const string root_path = "/Users/tigertang/Desktop/database";
 
 int main() {
 
-    catalog_manager.set_root_path(root_path);
-    auto table = catalog_manager.GetTable("fuck_table");
-//
-//    Table table;
-//    table.title = "fuck_table";
-//    auto column = Column();
-//    column.is_primary = column.is_indexed = column.is_unique = true;
-//    column.title = "fuck_id";
-//    column.type = DataTypeIdentifier::Int;
-//    column.size = 4;
-//    table.columns.push_back(column);
-//
-//    column = Column();
-//    column.is_primary = column.is_indexed = false;
-//    column.is_unique = true;
-//    column.type = DataTypeIdentifier::Char;
-//    column.title = "fuck_age";
-//    column.size = 255;
-//    table.columns.push_back(column);
-//
-//
-//    catalog_manager.CreateTable(table);
-//    catalog_manager.RemoveTable("another_table");
+    Node<Int> node(sizeof(int), 5);
+    node.is_internal = true;
+    for (int i = 0; i < 5; i++)
+        node.children[i] = 10086 - i;
+    for (int i = 0; i < 4; i++) {
+        node.keys[i].set_value(i - 10);
+    }
+    
+    Node<Int> another(sizeof(int), node.raw_value());
+
     return 0;
 }
