@@ -21,17 +21,16 @@ template <typename KeyType>
 class BPlusTree {
 public:
     BPlusTree() = delete;
-    BPlusTree(int, std::function<KeyType(Record)>, const std::string &);
-    void Insert(Record);
+    BPlusTree(int, const std::string &);
+    void Insert(KeyType, uint64_t);
     void Erase(KeyType);
     
 private:
-    const std::function<KeyType(Record)> get_key;
     const std::string index_path;
     const int key_size;
     BufferManager<kBlockNumber> &buffer_manager = BufferManager<kBlockNumber>::shared;
     const FileManager &file_manager = FileManager::shared;
-    void InsertRecurrsively(uint64_t, Record);
+    void InsertRecurrsively(uint64_t, KeyType, uint64_t);
     
     int degree() const;
     
@@ -47,7 +46,7 @@ private:
 
 template <typename KeyType>
 int BPlusTree<KeyType>::degree() const {
-    return (kBlockSize + key_size - 5) / (sizeof(uint64_t) + key_size);
+    return (kBlockSize + key_size - 9) / (sizeof(uint64_t) + key_size) - 1;
 }
 
 template <typename KeyType>
@@ -110,18 +109,26 @@ void BPlusTree<KeyType>::set_invalid_head_offset(uint64_t offset) {
 }
 
 template <typename KeyType>
-BPlusTree<KeyType>::BPlusTree(int key_size, std::function<KeyType(Record)> get_key, const std::string &index_path): key_size(key_size), get_key(get_key), index_path(index_path) { }
+BPlusTree<KeyType>::BPlusTree(int key_size, const std::string &index_path): key_size(key_size), index_path(index_path) { }
 
 template <typename KeyType>
-void BPlusTree<KeyType>::Insert(Record record) {
+void BPlusTree<KeyType>::Insert(KeyType key, uint64_t offset) {
+    buffer_manager.Open(index_path);
     if (root_offset() == 0) {
-        
+        Node<KeyType> node(key_size, degree());
+        node.is_internal = false;
+        node.total = 1;
+        node.keys[0] = key;
+        node.children[0] = offset;
+        auto address = NewBlock();
+        buffer_manager.Write(address, node.raw_value());
+        set_root_offset(address);
     } else {
-        
+        InsertRecurrsively(root_offset(), key, offset);
     }
 }
 
 template <typename KeyType>
-void BPlusTree<KeyType>::InsertRecurrsively(uint64_t offset, Record record) {
+void BPlusTree<KeyType>::InsertRecurrsively(uint64_t address, KeyType key, uint64_t offset) {
     
 }

@@ -23,15 +23,17 @@ const string root_path = "/Users/tigertang/Desktop/database";
 
 int main() {
 
-    Node<Int> node(sizeof(int), 5);
+    Node<Int> node(5, 5);
     node.is_internal = true;
     for (int i = 0; i < 5; i++)
-        node.children[i] = 10086 - i;
+        node.children.push_back(10086 - i);
     for (int i = 0; i < 4; i++) {
-        node.keys[i].set_value(i - 10);
+        string s = "key";
+        s.push_back(i + 'c');
+        node.keys.emplace_back(i + 1);
     }
     
-    Node<Int> another(sizeof(int), node.raw_value());
+    Node<Int> another(5, node.raw_value());
 
     return 0;
 }
