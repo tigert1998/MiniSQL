@@ -27,10 +27,12 @@ const string table_name = "fuck_table";
 
 
 int main() {
+    srand(time(nullptr));
     index_manager.set_root_path(root_path);
     index_manager.CreatePrimaryIndex(table_name);
     BPlusTree<Int> t(4, root_path + "/" + table_name + ".index");
     set<int> s;
+    auto start = clock();
     for (int i = 0; i < 100000; i++) {
         int x = rand() % 1000;
         if (s.count(x) != t.Count(Int(x))) {
@@ -50,6 +52,8 @@ int main() {
             t.Insert(Int(x), i + 1);
         }
     }
+    auto end = clock();
+    cout << (end - start) / CLOCKS_PER_SEC << endl;
     // t.Print();
     return 0;
 }

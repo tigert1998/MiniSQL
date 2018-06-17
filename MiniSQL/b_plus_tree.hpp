@@ -440,7 +440,6 @@ void BPlusTree<KeyType>::Insert(KeyType key, uint64_t offset) {
             set_root_offset(address);
         }
     }
-    buffer_manager.Flush();
 }
 
 template <typename KeyType>
