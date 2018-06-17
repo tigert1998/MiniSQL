@@ -26,30 +26,32 @@ const string root_path = "/Users/tigertang/Desktop/database";
 const string table_name = "fuck_table";
 
 
+string RandomString() {
+    string ans = "";
+    for (int i = 0; i < 7; i++) {
+        ans.push_back('a' + rand() % 26);
+    }
+    return ans;
+}
+
 int main() {
     srand(time(nullptr));
     index_manager.set_root_path(root_path);
     index_manager.CreatePrimaryIndex(table_name);
-    BPlusTree<Int> t(4, root_path + "/" + table_name + ".index");
-    set<int> s;
+    BPlusTree<Char> t(8, root_path + "/" + table_name + ".index");
+    set<string> s;
     auto start = clock();
-    for (int i = 0; i < 100000; i++) {
-        int x = rand() % 1000;
-        if (s.count(x) != t.Count(Int(x))) {
-            cout << "iteration = " << i << endl;
-            cout << "x = " << x << endl;
-            cout << "ans = " << boolalpha << (bool) s.count(x) << endl;
-            t.PrintTree();
-            t.Print();
-            cout << "Wrong!" << endl;
+    for (int i = 0; i < 10000; i++) {
+        string x = RandomString();
+        if (s.count(x) != t.Count(Char(8, x))) {
             return 0;
         }
         if (s.count(x)) {
             s.erase(x);
-            t.Erase(Int(x));
+            t.Erase(Char(8, x));
         } else {
             s.insert(x);
-            t.Insert(Int(x), i + 1);
+            t.Insert(Char(8, x), i + 1);
         }
     }
     auto end = clock();

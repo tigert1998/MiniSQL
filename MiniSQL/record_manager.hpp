@@ -7,3 +7,10 @@
 //
 
 #pragma once
+
+class RecordManager {
+public:
+    
+private:
+    
+};

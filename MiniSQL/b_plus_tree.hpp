@@ -420,8 +420,7 @@ void BPlusTree<KeyType>::Insert(KeyType key, uint64_t offset) {
         Node<KeyType> node(key_size, degree());
         node.is_internal = false;
         node.children.resize(1);
-        node.keys.resize(1);
-        node.keys[0] = key;
+        node.keys.push_back(key);
         node.children[0] = offset;
         auto address = NewBlock();
         WriteNodeAt(address, node);
