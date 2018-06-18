@@ -91,6 +91,7 @@ Table CatalogManager::GetTable(const std::string &title) const {
 
 void CatalogManager::CreateTable(const Table &table) const {
     using namespace rapidjson;
+    using namespace std;
     if (!is_valid())
         throw RootPathError();
     Document doc = ImportJSON();
@@ -112,8 +113,14 @@ void CatalogManager::CreateTable(const Table &table) const {
     
     ExportJSON(doc);
     
-    file_manager.CreateFileAt(root_path_ + "/" + table.title + ".data");
-    file_manager.CreateFileAt(root_path_ + "/" + table.title + ".index");
+    static char data[2 * sizeof(uint64_t)];
+    memset(data, 0, 2 * sizeof(uint64_t));
+    fstream fs;
+    fs.open(root_path_ + "/" + table.title + ".data", ios::out | ios::binary);
+    fs.write(data, 2 * sizeof(uint64_t));
+    fs.close();
+    fs.open(root_path_ + "/" + table.title + ".index", ios::out | ios::binary);
+    fs.write(data, 2 * sizeof(uint64_t));
 }
 
 void CatalogManager::RemoveTable(const std::string &title) const {

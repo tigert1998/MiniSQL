@@ -26,7 +26,14 @@ struct Table {
     std::string title;
     std::vector<Column> columns;
     
+    uint64_t size() const {
+        uint64_t ans = 0;
+        for (auto c : columns) ans += c.size;
+        return ans;
+    }
 };
+
+
 
 
 // T should be Int Char or Float
@@ -35,12 +42,13 @@ public:
     Record() = delete;
     Record(const Table &);
     Record(const Table &, const char *);
-    const char *raw_value();
+    const char *raw_value() const;
     void Reset();
     template <typename T> void Feed(const T &);
-    template <typename T> T Get(int);
+    template <typename T> T Get(int) const;
     uint64_t size() const;
     const Table &schema;
+    const Record &operator=(const Record &);
     
 private:
     std::vector<char> raw_value_;
@@ -55,21 +63,25 @@ Record::Record(const Table &schema, const char *s): schema(schema), column_id((i
     memcpy(raw_value_.data(), s, size());
 }
 
+const Record &Record::operator=(const Record &record) {
+    raw_value_ = record.raw_value_;
+    column_id = record.column_id;
+    return record;
+}
+
 uint64_t Record::size() const {
-    uint64_t ans = 0;
-    for (auto c : schema.columns) ans += c.size;
-    return ans;
+    return schema.size();
 }
 
 template <>
-Char Record::Get(int column_id) {
+Char Record::Get(int column_id) const {
     uint64_t offset = 0;
     for (int i = 0; i < column_id; i++) offset += schema.columns[i].size;
     return Char((int) schema.columns[column_id].size, raw_value_.data() + offset);
 }
 
 template <typename T>
-T Record::Get(int column_id) {
+T Record::Get(int column_id) const {
     uint64_t offset = 0;
     for (int i = 0; i < column_id; i++) offset += schema.columns[i].size;
     return T(raw_value_.data() + offset);
@@ -93,6 +105,6 @@ void Record::Feed(const T &value) {
     column_id++;
 }
 
-const char *Record::raw_value() {
+const char *Record::raw_value() const {
     return raw_value_.data();
 }

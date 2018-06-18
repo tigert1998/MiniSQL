@@ -109,7 +109,6 @@ const char *BufferManager<H, S>::Read(uint64_t offset_in_file) {
         modified[h] = false;
         offset[h] = offset_in_file;
         position[offset_in_file] = h;
-        ListPushFront(h);
     };
     
     if (position.count(offset_in_file)) {
@@ -120,14 +119,15 @@ const char *BufferManager<H, S>::Read(uint64_t offset_in_file) {
     if (valid_total < H) {
         int h = valid_total++;
         read_into_buffer(offset_in_file, h);
+        ListPushFront(h);
         return buffer[h];
     }
     int h = left[H];
     if (modified[h])
         FlushBufferAtIndex(h);
     position.erase(offset[h]);
-    
     read_into_buffer(offset_in_file, h);
+    ListPullIndex(h);
     return buffer[h];
 }
 
@@ -140,7 +140,7 @@ void BufferManager<H, S>::Write(uint64_t offset_in_file, const char *data) {
         ListPullIndex(h);
     } else if (valid_total < H) {
         h = valid_total++;
-        ListPullIndex(h);
+        ListPushFront(h);
         position[offset_in_file] = h;
     } else {
         h = left[H];
