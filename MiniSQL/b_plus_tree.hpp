@@ -34,7 +34,7 @@ public:
 private:
     const std::string index_path;
     const int key_size;
-    BufferManager<kBlockNumber, kBlockSize> &buffer_manager = BufferManager<kBlockNumber, kBlockSize>::shared;
+    BufferManager<kBlockNumber, kBlockSize> buffer_manager;
     const FileManager &file_manager = FileManager::shared;
     void InsertRecursively(uint64_t, KeyType, uint64_t);
     void EraseRecursively(uint64_t, KeyType);
@@ -467,12 +467,11 @@ void BPlusTree<KeyType>::set_invalid_head_offset(uint64_t offset) {
 }
 
 template <typename KeyType>
-BPlusTree<KeyType>::BPlusTree(int key_size, const std::string &index_path): key_size(key_size), index_path(index_path) { }
+BPlusTree<KeyType>::BPlusTree(int key_size, const std::string &index_path): key_size(key_size), index_path(index_path), buffer_manager(index_path) { }
 
 template <typename KeyType>
 void BPlusTree<KeyType>::Insert(KeyType key, uint64_t offset) {
     using namespace std;
-    buffer_manager.Open(index_path);
     auto root_offset_ = root_offset();
     if (root_offset_ == 0) {
         Node<KeyType> node(key_size, degree());

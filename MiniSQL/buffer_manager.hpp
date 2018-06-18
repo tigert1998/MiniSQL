@@ -20,11 +20,9 @@
 template <int H, int S = 8192>
 class BufferManager {
 public:
-    static BufferManager<H, S> shared;
-    
-    BufferManager();
+    BufferManager() = delete;
+    BufferManager(const std::string &);
     ~BufferManager();
-    void Open(const std::string &);
     const char *Read(uint64_t);
     void Write(uint64_t, const char *);
     void Flush();
@@ -35,7 +33,7 @@ private:
     void ListPushFront(int);
     void ListRemoveIndex(int);
     
-    std::string file_path;
+    const std::string file_path;
     char buffer[H][S];
     bool modified[H];
     uint64_t offset[H];
@@ -52,9 +50,6 @@ void BufferManager<H, S>::Flush() {
         }
     std::fill(modified, modified + H, false);
 }
-
-template <int H, int S>
-BufferManager<H, S> BufferManager<H, S>::shared = BufferManager<H, S>();
 
 template <int H, int S>
 BufferManager<H, S>::~BufferManager() {
@@ -85,8 +80,12 @@ void BufferManager<H, S>::ListRemoveIndex(int h) {
 }
 
 template <int H, int S>
-BufferManager<H, S>::BufferManager() : valid_total(0) {
+BufferManager<H, S>::BufferManager(const std::string &file_path) : valid_total(0), file_path(file_path) {
     left[H] = right[H] = H;
+    const FileManager &file_manager = FileManager::shared;
+    if (!file_manager.FileExistsAt(file_path)) {
+        file_manager.CreateFileAt(file_path);
+    }
 }
 
 template <int H, int S>
@@ -97,21 +96,6 @@ void BufferManager<H, S>::FlushBufferAtIndex(int h) {
     fs.seekp(offset[h]);
     fs.write(buffer[h], S);
     modified[h] = false;
-}
-
-template <int H, int S>
-void BufferManager<H, S>::Open(const std::string &file_path) {
-    using namespace std;
-    this->file_path = file_path;
-    Flush();
-    valid_total = 0;
-    left[H] = right[H] = H;
-    position.clear();
-    
-    const FileManager &file_manager = FileManager::shared;
-    if (!file_manager.FileExistsAt(file_path)) {
-        file_manager.CreateFileAt(file_path);
-    }
 }
 
 template <int H, int S>
