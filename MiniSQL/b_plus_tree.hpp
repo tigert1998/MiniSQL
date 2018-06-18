@@ -16,6 +16,7 @@
 #include "table_item.hpp"
 #include "constant.hpp"
 #include "node.hpp"
+#include "predicate.hpp"
 
 // KeyType should be Int, Char or Float
 template <typename KeyType>
@@ -28,6 +29,7 @@ public:
     void Erase(KeyType);
     void Print();
     void PrintTree();
+    void Query(const Predicate<KeyType> &, std::function<void(uint64_t)>);
     
 private:
     const std::string index_path;
@@ -35,7 +37,6 @@ private:
     BufferManager<kBlockNumber, kBlockSize> &buffer_manager = BufferManager<kBlockNumber, kBlockSize>::shared;
     const FileManager &file_manager = FileManager::shared;
     void InsertRecursively(uint64_t, KeyType, uint64_t);
-    int CountRecursively(uint64_t, KeyType);
     void EraseRecursively(uint64_t, KeyType);
     void SplitAtIndex(long, uint64_t);
     void MergeAtIndex(long, uint64_t);
@@ -53,7 +54,73 @@ private:
     Node<KeyType> GetNodeAt(uint64_t);
     void WriteNodeAt(uint64_t, const Node<KeyType> &);
     void PrintTreeRecursively(uint64_t);
+    uint64_t LocateKey(KeyType key);
+    
 };
+
+template <typename KeyType>
+uint64_t BPlusTree<KeyType>::LocateKey(KeyType key) {
+    auto address = root_offset();
+    auto node = GetNodeAt(address);
+    while (node.is_internal) {
+        auto key_values = node.key_values();
+        auto i = upper_bound(key_values.begin(), key_values.end(), key.value()) - key_values.begin();
+        address = node.children[i];
+        node = GetNodeAt(address);
+    }
+    return address;
+}
+
+template <typename KeyType>
+void BPlusTree<KeyType>::Query(const Predicate<KeyType> &predicate, std::function<void(uint64_t)> yield) {
+    if (root_offset() == 0) return;
+    auto address = LocateKey(predicate.key);
+    auto node = GetNodeAt(address);
+    auto key_values = node.key_values();
+    auto i_lower = lower_bound(key_values.begin(), key_values.end(), predicate.key.value()) - key_values.begin();
+    auto i_upper = upper_bound(key_values.begin(), key_values.end(), predicate.key.value()) - key_values.begin();
+    
+    auto trace_front = [&]() {
+        while (node.left_sibling) {
+            address = node.left_sibling;
+            node = GetNodeAt(address);
+            for (auto it = node.children.rbegin(); it != node.children.rend(); it++)
+                yield(*it);
+        }
+    };
+    auto trace_back = [&]() {
+        while (node.right_sibling) {
+            address = node.right_sibling;
+            node = GetNodeAt(address);
+            for (auto it = node.children.begin(); it != node.children.end(); it++)
+                yield(*it);
+        }
+    };
+    
+    switch (predicate.type) {
+        case PredicateIdentifier::EQUAL:
+            if (i_lower >= node.children.size()) return;
+            if (key_values[i_lower] == predicate.key.value())
+                yield(node.children[i_lower]);
+            break;
+        case PredicateIdentifier::LESS:
+            for (auto i = i_lower - 1; i >= 0; i--) yield(node.children[i]);
+            trace_front();
+            break;
+        case PredicateIdentifier::GREATER:
+            for (auto i = i_upper; i < node.children.size(); i++) yield(node.children[i]);
+            trace_back();
+            break;
+        case PredicateIdentifier::LESS_OR_EQUAL:
+            for (auto i = i_upper - 1; i >= 0; i--) yield(node.children[i]);
+            trace_front();
+            break;
+        case PredicateIdentifier::GREATER_OR_EQUAL:
+            for (auto i = i_lower; i < node.children.size(); i++) yield(node.children[i]);
+            trace_back();
+            break;
+    }
+}
 
 template <typename KeyType>
 void BPlusTree<KeyType>::MergeAtIndex(long i, uint64_t address) {
@@ -236,23 +303,14 @@ void BPlusTree<KeyType>::Print() {
 }
 
 template <typename KeyType>
-int BPlusTree<KeyType>::CountRecursively(uint64_t address, KeyType key) {
-    auto node = GetNodeAt(address);
-    auto key_values = node.key_values();
-    if (node.is_internal) {
-        auto i = upper_bound(key_values.begin(), key_values.end(), key.value()) - key_values.begin();
-        return CountRecursively(node.children[i], key);
-    } else {
-        auto it = lower_bound(key_values.begin(), key_values.end(), key.value());
-        if (it == key_values.end()) return 0;
-        return *it == key.value();
-    }
-}
-
-template <typename KeyType>
 int BPlusTree<KeyType>::Count(KeyType key) {
     if (root_offset() == 0) return 0;
-    return CountRecursively(root_offset(), key);
+    auto address = LocateKey(key);
+    auto node = GetNodeAt(address);
+    auto key_values = node.key_values();
+    auto it = lower_bound(key_values.begin(), key_values.end(), key.value());
+    if (it == key_values.end()) return 0;
+    return *it == key.value();
 }
 
 template <typename KeyType>

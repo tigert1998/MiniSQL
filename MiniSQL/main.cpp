@@ -35,15 +35,15 @@ string RandomString() {
 }
 
 int main() {
-    srand(time(nullptr));
     index_manager.set_root_path(root_path);
     index_manager.CreatePrimaryIndex(table_name);
     BPlusTree<Char> t(8, root_path + "/" + table_name + ".index");
     set<string> s;
     auto start = clock();
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < 100; i++) {
         string x = RandomString();
         if (s.count(x) != t.Count(Char(8, x))) {
+            cout << "Wrong Answer!" << endl;
             return 0;
         }
         if (s.count(x)) {
@@ -55,7 +55,11 @@ int main() {
         }
     }
     auto end = clock();
-    cout << (end - start) / CLOCKS_PER_SEC << endl;
-    // t.Print();
+    cout << "Consumes " << (end - start) / CLOCKS_PER_SEC << "s" << endl;
+    t.Print();
+    Predicate<Char> predicate("column_name", PredicateIdentifier::LESS, Char(8, "aaaaa"));
+    t.Query(predicate, [](uint64_t address) {
+        cout << "address = " << address << endl;
+    });
     return 0;
 }

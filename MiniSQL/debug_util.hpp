@@ -30,16 +30,3 @@ void PrintBlock(const char *s) {
         cout << endl;
     }
 }
-
-std::string ShowDataTypeIdentifier(DataTypeIdentifier t) {
-    switch (t) {
-        case DataTypeIdentifier::Int:
-            return "Int";
-        case DataTypeIdentifier::Char:
-            return "Char";
-        case DataTypeIdentifier::Float:
-            return "Float";
-        default:
-            return "WrongType";
-    }
-}
