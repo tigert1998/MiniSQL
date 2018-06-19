@@ -66,7 +66,7 @@ int main() {
         index_manager.InsertRecordIntoIndices(x, offset);
     }
     
-    for (int i = 1; i <= 1000; i += 10) {
+    for (int i = 1; i <= 100; i ++) {
         Predicate<Int> predicate("id", PredicateIdentifier::EQUAL, Int(i));
         uint64_t offset;
         index_manager.Query(table, predicate, [&](uint64_t ans) {

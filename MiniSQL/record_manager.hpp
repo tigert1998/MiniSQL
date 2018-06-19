@@ -149,14 +149,8 @@ Record RecordManager::GetRecord(uint64_t offset, KeyType key, std::function<bool
     using namespace std;
     auto node = GetBlockAt(offset);
     int i;
-    for (i = 0; i < node.total(); i++) {
-        cout << "id = " << node.records[i].Get<Int>(0).value() << endl;
-        cout << "weight = " << node.records[i].Get<Float>(1).value() << endl;
-        cout << "name = " << node.records[i].Get<Char>(2).value() << endl;
-        cout << "score = " << node.records[i].Get<Int>(3).value() << endl;
+    for (i = 0; i < node.total(); i++)
         if (match(key, node.records[i])) break;
-    }
-        
     assert(i < node.total());
     return node.records[i];
 }
