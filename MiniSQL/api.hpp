@@ -30,7 +30,8 @@ private:
     static bool Satisfy(const Record &record, const Predicate &predicate);
     static bool Satisfy(const Record &record, const std::vector<Predicate> &predicates);
     
-    static void QueryWithIndexPredicate(const Table &table, const Predicate &index_predicate, const std::vector<Predicate> other_predicates, std::function<void(Record)> yield);
+    static void QueryWithIndexPredicate(const Table &table, const Predicate &index_predicate, const std::vector<Predicate> other_predicates, std::function<void(uint64_t, Record)> yield);
+    static void RemoveWithOffsetsAndRecords(const std::vector<uint64_t> &offsets, const std::vector<Record> &records);
     
 public:
     static std::string root_path;
@@ -59,7 +60,76 @@ public:
 
 std::string API::root_path;
 
-void API::QueryWithIndexPredicate(const Table &table, const Predicate &index_predicate, const std::vector<Predicate> other_predicates, std::function<void(Record)> yield) {
+void API::RemoveWithOffsetsAndRecords(const std::vector<uint64_t> &offsets, const std::vector<Record> &records) {
+    if (offsets.size() == 0) return;
+    IndexManager &index_manager = IndexManager::shared;
+    index_manager.set_root_path(root_path);
+    RecordManager record_manager(records.front().schema, root_path + "/" + records.front().schema.title + ".data");
+    for (int i = 0; i < offsets.size(); i++) {
+        auto record = records[i];
+        auto offset = offsets[i];
+        index_manager.RemoveRecordFromIndices(record);
+        record_manager.Erase(offset, record);
+    }
+}
+
+void API::Delete(const std::string &table_name, const std::vector<Predicate> &predicates) {
+    using namespace std;
+    CatalogManager &catalog_manager = CatalogManager::shared;
+    IndexManager &index_manager = IndexManager::shared;
+    catalog_manager.set_root_path(root_path);
+    index_manager.set_root_path(root_path);
+    auto table = catalog_manager.GetTable(table_name);
+    RecordManager record_manager(table, root_path + "/" + table_name + ".data");
+    
+    static vector<uint64_t> offsets;
+    static vector<Record> records;
+    
+    offsets.clear();
+    records.clear();
+    
+    for (int i = 0; i < predicates.size(); i++) {
+        auto predicate = predicates[i];
+        const Column &column = table.GetColumn(predicate.column_name);
+        if (predicate.type == PredicateIdentifier::EQUAL && column.is_indexed) {
+            // select '=' firstly
+            vector<Predicate> other_predicates = predicates;
+            other_predicates.erase(other_predicates.begin() + i);
+            QueryWithIndexPredicate(table, predicate, other_predicates, [&](uint64_t offset, Record record) {
+                offsets.push_back(offset);
+                records.push_back(record);
+            });
+            RemoveWithOffsetsAndRecords(offsets, records);
+            return;
+        }
+    }
+    
+    for (int i = 0; i < predicates.size(); i++) {
+        auto predicate = predicates[i];
+        const Column &column = table.GetColumn(predicate.column_name);
+        if (!column.is_indexed) continue;
+        if (predicate.type == PredicateIdentifier::UNEQUAL) continue;
+        
+        vector<Predicate> other_predicates = predicates;
+        other_predicates.erase(other_predicates.begin() + i);
+        QueryWithIndexPredicate(table, predicate, other_predicates, [&](uint64_t offset, Record record) {
+            offsets.push_back(offset);
+            records.push_back(record);
+        });
+        RemoveWithOffsetsAndRecords(offsets, records);
+        return;
+    }
+    
+    record_manager.TraverseRecordsWithOffsets([&](uint64_t offset, Record record) {
+        if (Satisfy(record, predicates)) {
+            offsets.push_back(offset);
+            records.push_back(record);
+        }
+    });
+    RemoveWithOffsetsAndRecords(offsets, records);
+}
+
+void API::QueryWithIndexPredicate(const Table &table, const Predicate &index_predicate, const std::vector<Predicate> other_predicates, std::function<void(uint64_t, Record)> yield) {
     IndexManager &index_manager = IndexManager::shared;
     index_manager.set_root_path(root_path);
     RecordManager record_manager(table, root_path + "/" + table.title + ".data");
@@ -75,7 +145,7 @@ void API::QueryWithIndexPredicate(const Table &table, const Predicate &index_pre
                 return record.Get<Int>(column_id).value() == key.value();
             });
             if (Satisfy(record, other_predicates))
-                yield(record);
+                yield(offset, record);
         });
     } else if (column.type == DataTypeIdentifier::Char) {
         std::string value = index_predicate.value.substr(1, index_predicate.value.length() - 2);
@@ -84,7 +154,7 @@ void API::QueryWithIndexPredicate(const Table &table, const Predicate &index_pre
                 return record.Get<Char>(column_id).value() == key.value();
             });
             if (Satisfy(record, other_predicates))
-                yield(record);
+                yield(offset, record);
         });
     } else if (column.type == DataTypeIdentifier::Float) {
         float value = atof(index_predicate.value.c_str());
@@ -93,7 +163,7 @@ void API::QueryWithIndexPredicate(const Table &table, const Predicate &index_pre
                 return record.Get<Float>(column_id).value() == key.value();
             });
             if (Satisfy(record, other_predicates))
-                yield(record);
+                yield(offset, record);
         });
     }
 }
@@ -199,7 +269,7 @@ void API::Select(const std::string &table_name, const std::vector<Predicate> &pr
             // select '=' firstly
             vector<Predicate> other_predicates = predicates;
             other_predicates.erase(other_predicates.begin() + i);
-            QueryWithIndexPredicate(table, predicate, other_predicates, yield);
+            QueryWithIndexPredicate(table, predicate, other_predicates, [&](uint64_t, Record record) { yield(record); });
             return;
         }
     }
@@ -212,7 +282,7 @@ void API::Select(const std::string &table_name, const std::vector<Predicate> &pr
         
         vector<Predicate> other_predicates = predicates;
         other_predicates.erase(other_predicates.begin() + i);
-        QueryWithIndexPredicate(table, predicate, other_predicates, yield);
+        QueryWithIndexPredicate(table, predicate, other_predicates, [&](uint64_t, Record record) { yield(record); });
         return;
     }
     

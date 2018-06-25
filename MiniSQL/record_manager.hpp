@@ -51,6 +51,7 @@ public:
     RecordManager(const Table &, const std::string &);
     uint64_t Insert(const Record &);
     template <typename KeyType> void Erase(uint64_t, KeyType, std::function<bool(KeyType, Record)>);
+    void Erase(uint64_t, Record);
     template <typename KeyType> Record GetRecord(uint64_t, KeyType, std::function<bool(KeyType, Record)>);
     void PrintFile(std::function<void(Record)>);
     void TraverseRecordsWithOffsets(std::function<void(uint64_t, Record)>);
@@ -137,6 +138,21 @@ uint64_t RecordManager::Insert(const Record &record) {
             set_valid_head_offset(new_address);
             return new_address;
         }
+    }
+}
+
+void RecordManager::Erase(uint64_t offset, Record record) {
+    auto node = GetBlockAt(offset);
+    int i;
+    for (i = 0; i < node.total(); i++) if (record == node.records[i]) break;
+    assert(i < node.total());
+    node.records.erase(node.records.begin() + i);
+    if (node.total() == 0) {
+        node.next = invalid_head_offset();
+        set_invalid_head_offset(offset);
+        WriteBlockAt(offset, node);
+    } else {
+        WriteBlockAt(offset, node);
     }
 }
 

@@ -59,6 +59,7 @@ public:
     uint64_t size() const;
     const Table &schema;
     const Record &operator=(const Record &);
+    bool operator==(const Record &);
     
 private:
     std::vector<char> raw_value_;
@@ -71,6 +72,14 @@ Record::Record(const Table &schema): schema(schema), column_id(0) {}
 Record::Record(const Table &schema, const char *s): schema(schema), column_id((int) schema.columns.size()) {
     raw_value_.resize(size());
     memcpy(raw_value_.data(), s, size());
+}
+
+bool Record::operator==(const Record &record) {
+    if (raw_value_.size() != record.raw_value_.size()) return false;
+    for (int i = 0; i < raw_value_.size(); i++) {
+        if (raw_value_[i] != record.raw_value_[i]) return false;
+    }
+    return true;
 }
 
 const Record &Record::operator=(const Record &record) {
