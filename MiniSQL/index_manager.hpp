@@ -26,7 +26,7 @@ public:
     void RemoveIndex(const std::string &) const;
     void InsertRecordIntoIndices(const Record &, uint64_t) const;
     void RemoveRecordFromIndices(const Record &) const;
-    template <typename KeyType> void Query(const Table &, const Predicate<KeyType> &, std::function<void(uint64_t)>) const;
+    template <typename KeyType> void Query(const Table &, const Predicate_<KeyType> &, std::function<void(uint64_t, KeyType)>) const;
     void set_root_path(const std::string &);
     
 private:
@@ -47,13 +47,11 @@ IndexManager::IndexManager(): is_valid_(false) { }
 IndexManager::IndexManager(const std::string &root_path): is_valid_(true), root_path_(root_path) { }
 
 template <typename KeyType>
-void IndexManager::Query(const Table &table, const Predicate<KeyType> &predicate, std::function<void(uint64_t)> yield) const {
+void IndexManager::Query(const Table &table, const Predicate_<KeyType> &predicate, std::function<void(uint64_t, KeyType)> yield) const {
     using namespace std;
     if (!is_valid_) throw RootPathError();
-    int i;
-    for (i = 0; i < table.columns.size(); i++)
-        if (table.columns[i].title == predicate.column_name) break;
-    if (i == table.columns.size()) throw ColumnNotExistsError();
+    int i = table.GetColumnID(predicate.column_name);
+    
     if (!table.columns[i].is_indexed) throw IndexNotExistsError();
     if (table.columns[i].is_primary) {
         string index_path = root_path_ + "/" + table.title + ".index";
@@ -197,6 +195,34 @@ void IndexManager::CreateIndex(const std::string &index_name, const std::string 
     json_manager.ExportJSON(json_path(), doc);
 
     InitIndexFile(index_path);
+    
+    auto type = static_cast<DataTypeIdentifier>(column_json["type"].GetInt());
+    auto key_size = column_json["size"].GetInt();
+    CatalogManager catalog_manager;
+    catalog_manager.set_root_path(root_path_);
+    Table table = catalog_manager.GetTable(table_name);
+    
+    int column_id = table.GetColumnID(column_name);
+    
+    RecordManager record_manager(table, root_path_ + "/" + table_name + ".data");
+    if (type == DataTypeIdentifier::Int) {
+        BPlusTree<Int> t(key_size, index_path);
+        record_manager.TraverseRecordsWithOffsets([&](uint64_t offset, Record record) {
+            t.Insert(record.Get<Int>(column_id), offset);
+        });
+    }
+    else if (type == DataTypeIdentifier::Char) {
+        BPlusTree<Char> t(key_size, index_path);
+        record_manager.TraverseRecordsWithOffsets([&](uint64_t offset, Record record) {
+            t.Insert(record.Get<Char>(column_id), offset);
+        });
+    }
+    else if (type == DataTypeIdentifier::Float) {
+        BPlusTree<Float> t(key_size, index_path);
+        record_manager.TraverseRecordsWithOffsets([&](uint64_t offset, Record record) {
+            t.Insert(record.Get<Float>(column_id), offset);
+        });
+    }
 }
 
 void IndexManager::RemoveIndex(const std::string &index_name) const {

@@ -29,7 +29,7 @@ public:
     void Erase(KeyType);
     void Print();
     void PrintTree();
-    void Query(const Predicate<KeyType> &, std::function<void(uint64_t)>);
+    void Query(const Predicate_<KeyType> &, std::function<void(uint64_t, KeyType)>);
     
 private:
     const std::string index_path;
@@ -72,7 +72,7 @@ uint64_t BPlusTree<KeyType>::LocateKey(KeyType key) {
 }
 
 template <typename KeyType>
-void BPlusTree<KeyType>::Query(const Predicate<KeyType> &predicate, std::function<void(uint64_t)> yield) {
+void BPlusTree<KeyType>::Query(const Predicate_<KeyType> &predicate, std::function<void(uint64_t, KeyType)> yield) {
     if (root_offset() == 0) return;
     auto address = LocateKey(predicate.key);
     auto node = GetNodeAt(address);
@@ -84,16 +84,16 @@ void BPlusTree<KeyType>::Query(const Predicate<KeyType> &predicate, std::functio
         while (node.left_sibling) {
             address = node.left_sibling;
             node = GetNodeAt(address);
-            for (auto it = node.children.rbegin(); it != node.children.rend(); it++)
-                yield(*it);
+            for (int i = 0; i < node.children.size(); i++)
+                yield(node.children[i], node.keys[i]);
         }
     };
     auto trace_back = [&]() {
         while (node.right_sibling) {
             address = node.right_sibling;
             node = GetNodeAt(address);
-            for (auto it = node.children.begin(); it != node.children.end(); it++)
-                yield(*it);
+            for (int i = 0; i < node.children.size(); i++)
+                yield(node.children[i], node.keys[i]);
         }
     };
     
@@ -101,23 +101,35 @@ void BPlusTree<KeyType>::Query(const Predicate<KeyType> &predicate, std::functio
         case PredicateIdentifier::EQUAL:
             if (i_lower >= node.children.size()) return;
             if (key_values[i_lower] == predicate.key.value())
-                yield(node.children[i_lower]);
+                yield(node.children[i_lower], node.keys[i_lower]);
             break;
         case PredicateIdentifier::LESS:
-            for (auto i = i_lower - 1; i >= 0; i--) yield(node.children[i]);
+            for (auto i = i_lower - 1; i >= 0; i--)
+                yield(node.children[i], node.keys[i]);
             trace_front();
             break;
         case PredicateIdentifier::GREATER:
-            for (auto i = i_upper; i < node.children.size(); i++) yield(node.children[i]);
+            for (auto i = i_upper; i < node.children.size(); i++)
+                yield(node.children[i], node.keys[i]);
             trace_back();
             break;
         case PredicateIdentifier::LESS_OR_EQUAL:
-            for (auto i = i_upper - 1; i >= 0; i--) yield(node.children[i]);
+            for (auto i = i_upper - 1; i >= 0; i--)
+                yield(node.children[i], node.keys[i]);
             trace_front();
             break;
         case PredicateIdentifier::GREATER_OR_EQUAL:
-            for (auto i = i_lower; i < node.children.size(); i++) yield(node.children[i]);
+            for (auto i = i_lower; i < node.children.size(); i++)
+                yield(node.children[i], node.keys[i]);
             trace_back();
+            break;
+        case PredicateIdentifier::UNEQUAL:
+            trace_back();
+            for (auto i = 0; i <= i_lower - 1; i++)
+                yield(node.children[i], node.keys[i]);
+            for (auto i = i_upper; i < node.children.size(); i++)
+                yield(node.children[i], node.keys[i]);
+            trace_front();
             break;
     }
 }

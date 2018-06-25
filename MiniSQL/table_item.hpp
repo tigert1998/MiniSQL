@@ -31,6 +31,16 @@ struct Table {
         for (auto c : columns) ans += c.size;
         return ans;
     }
+    
+    int GetColumnID(const std::string &column_name) const {
+        for (int i = 0; i < columns.size(); i++) if (columns[i].title == column_name) return i;
+        throw ColumnNotExistsError();
+    }
+    
+    const Column &GetColumn(const std::string &column_name) const {
+        int id = GetColumnID(column_name);
+        return columns[id];
+    }
 };
 
 

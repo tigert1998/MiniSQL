@@ -53,6 +53,7 @@ public:
     template <typename KeyType> void Erase(uint64_t, KeyType, std::function<bool(KeyType, Record)>);
     template <typename KeyType> Record GetRecord(uint64_t, KeyType, std::function<bool(KeyType, Record)>);
     void PrintFile(std::function<void(Record)>);
+    void TraverseRecordsWithOffsets(std::function<void(uint64_t, Record)>);
     
 private:
     const FileManager &file_manager = FileManager::shared;
@@ -76,6 +77,17 @@ private:
 };
 
 RecordManager::RecordManager(const Table &schema, const std::string &data_path): schema(schema), buffer_manager(data_path), data_path(data_path) { }
+
+void RecordManager::TraverseRecordsWithOffsets(std::function<void(uint64_t, Record)> yield) {
+    using namespace std;
+    auto address = valid_head_offset();
+    while (address) {
+        auto node = GetBlockAt(address);
+        for (auto record : node.records)
+            yield(address, record);
+        address = node.next;
+    }
+}
 
 void RecordManager::PrintFile(std::function<void(Record)> print) {
     using namespace std;

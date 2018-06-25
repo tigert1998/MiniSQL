@@ -9,10 +9,7 @@
 #include <iostream>
 #include <set>
 
-#include "record_manager.hpp"
-#include "catalog_manager.hpp"
-#include "index_manager.hpp"
-
+#include "api.hpp"
 using namespace std;
 
 const std::string root_path = "/Users/tigertang/Desktop/database";
@@ -67,9 +64,9 @@ int main() {
     }
     
     for (int i = 1; i <= 100; i ++) {
-        Predicate<Int> predicate("id", PredicateIdentifier::EQUAL, Int(i));
+        Predicate_<Int> predicate("id", PredicateIdentifier::EQUAL, Int(i));
         uint64_t offset;
-        index_manager.Query(table, predicate, [&](uint64_t ans) {
+        index_manager.Query<Int>(table, predicate, [&](uint64_t ans, Int) {
             offset = ans;
         });
         auto match = [&](Int key, Record record) -> bool {

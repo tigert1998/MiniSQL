@@ -13,15 +13,15 @@
 enum class PredicateIdentifier {
     GREATER, GREATER_OR_EQUAL,
     LESS, LESS_OR_EQUAL,
-    EQUAL
+    EQUAL, UNEQUAL
 };
 
 template <typename KeyType>
-class Predicate {
+class Predicate_ {
 public:
     std::string column_name;
     PredicateIdentifier type;
     KeyType key;
 
-    Predicate(const std::string column_name, PredicateIdentifier type, KeyType key): column_name(column_name), type(type), key(key) { }
+    Predicate_(const std::string column_name, PredicateIdentifier type, KeyType key): column_name(column_name), type(type), key(key) { }
 };
