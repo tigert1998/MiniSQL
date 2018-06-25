@@ -10,4 +10,4 @@
 
 const int kBlockNumber = 100;
 
-const int kBlockSize = 128;
+const int kBlockSize = 4096;

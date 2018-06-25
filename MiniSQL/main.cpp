@@ -14,74 +14,82 @@ using namespace std;
 
 const std::string root_path = "/Users/tigertang/Desktop/database";
 
-CatalogManager &catalog_manager = CatalogManager::shared;
+string RandomName() {
+    switch (rand() % 4) {
+        case 0:
+            return "\"Tom\"";
+        case 1:
+            return "\"David\"";
+        case 2:
+            return "\"Mike\"";
+        default:
+            return "\"Jerry\"";
+    }
+}
+
+string RandomUniqueString() {
+    auto random_string = []() -> string {
+        string res;
+        for (int i = 0; i < 36; i++) res += 'a' + rand() % 26;
+        return res;
+    };
+    static set<string> s;
+    string str;
+    do {
+        str = random_string();
+    } while (s.count(str));
+    s.insert(str);
+    return "\"" + str + "\"";
+}
 
 int main() {
-    Table table;
-    table.title = "sample_table";
+    API::root_path = root_path;
     
-    Column c;
-    c.title = "id";
-    c.is_primary = c.is_indexed = c.is_unique = true;
-    c.type = DataTypeIdentifier::Int;
-    c.size = 4;
-    table.columns.push_back(c);
+    vector<string> column_names = {"height", "pid", "name", "identity", "age"};
+    vector<DataTypeIdentifier> types = {
+        DataTypeIdentifier::Float,
+        DataTypeIdentifier::Int,
+        DataTypeIdentifier::Char,
+        DataTypeIdentifier::Char,
+        DataTypeIdentifier::Int
+    };
+    vector<int> sizes = {4, 4, 33, 129, 4};
+    vector<bool> is_uniques = {true, false, false, true, true};
     
-    c.title = "weight";
-    c.is_primary = c.is_indexed = c.is_unique = false;
-    c.type = DataTypeIdentifier::Float;
-    c.size = 4;
-    table.columns.push_back(c);
+    API::CreateTable("person", column_names, types, sizes, is_uniques, "pid");
     
-    c.title = "name";
-    c.is_primary = c.is_indexed = c.is_unique = false;
-    c.type = DataTypeIdentifier::Char;
-    c.size = 10;
-    table.columns.push_back(c);
+    cout << "Output Inserted Content" << endl;
     
-    c.title = "score";
-    c.is_primary = c.is_indexed = c.is_unique = false;
-    c.type = DataTypeIdentifier::Int;
-    c.size = 4;
-    table.columns.push_back(c);
-    
-    catalog_manager.set_root_path(root_path);
-    catalog_manager.CreateTable(table);
-    RecordManager record_manager(table, root_path + "/" + table.title + ".data");
-    IndexManager &index_manager = IndexManager::shared;
-    index_manager.set_root_path(root_path);
-    
-    Record x(table);
-    
-    for (int i = 1; i <= 1000; i++) {
-        x.Reset();
-        x.Feed(Int(i));
-        x.Feed(Float(2.3333));
-        x.Feed(Char(10, "hello"));
-        x.Feed(Int(10086));
-        auto offset = record_manager.Insert(x);
-        index_manager.InsertRecordIntoIndices(x, offset);
+    for (int i = 1300; i <= 2299; i++) {
+        string height = to_string(i) + ".0";
+        string pid = to_string(i - 1300);
+        string name = RandomName();
+        string identity = RandomUniqueString();
+        string age = pid;
+        
+        cout << "-----------" << endl;
+        cout << "height = " << height << endl;
+        cout << "pid = " << pid << endl;
+        cout << "name = " << name << endl;
+        cout << "identity = " << identity << endl;
+        cout << "age = " << age << endl;
+        
+        API::Insert("person", {height, pid, name, identity, age});
     }
     
-    for (int i = 1; i <= 100; i ++) {
-        Predicate_<Int> predicate("id", PredicateIdentifier::EQUAL, Int(i));
-        uint64_t offset;
-        index_manager.Query<Int>(table, predicate, [&](uint64_t ans, Int) {
-            offset = ans;
-        });
-        auto match = [&](Int key, Record record) -> bool {
-            return record.Get<Int>(0).value() == key.value();
-        };
-        Record record = record_manager.GetRecord<Int>(offset, Int(i), match);
-        index_manager.RemoveRecordFromIndices(record);
-        record_manager.Erase<Int>(offset, Int(i), match);
-    }
+    API::CreateIndex("idx_height", "person", "height");
+    API::CreateIndex("idx_identity", "person", "identity");
+    API::CreateIndex("idx_age", "person", "age");
+
+    cout << "Output Disk Content" << endl;
     
-    record_manager.PrintFile([](Record record) {
-        cout << "id = " << record.Get<Int>(0).value() << endl;
-        cout << "weight = " << record.Get<Float>(1).value() << endl;
+    API::Select("person", {}, [](const Record &record) {
+        cout << "-----------" << endl;
+        cout << "height = " << record.Get<Float>(0).value() << endl;
+        cout << "pid = " << record.Get<Int>(1).value() << endl;
         cout << "name = " << record.Get<Char>(2).value() << endl;
-        cout << "score = " << record.Get<Int>(3).value() << endl;
+        cout << "identity = " << record.Get<Char>(3).value() << endl;
+        cout << "age = " << record.Get<Int>(4).value() << endl;
     });
     
     return 0;
