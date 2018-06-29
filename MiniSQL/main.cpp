@@ -14,32 +14,13 @@ using namespace std;
 
 const std::string root_path = "/Users/tigertang/Desktop/database";
 
-string RandomName() {
-    switch (rand() % 4) {
-        case 0:
-            return "\"Tom\"";
-        case 1:
-            return "\"David\"";
-        case 2:
-            return "\"Mike\"";
-        default:
-            return "\"Jerry\"";
-    }
-}
-
-string RandomUniqueString() {
-    auto random_string = []() -> string {
-        string res;
-        for (int i = 0; i < 36; i++) res += 'a' + rand() % 26;
-        return res;
-    };
-    static set<string> s;
-    string str;
-    do {
-        str = random_string();
-    } while (s.count(str));
-    s.insert(str);
-    return "\"" + str + "\"";
+void PutRecord(const Record &record) {
+    cout << "[Record]" << endl;
+    cout << "height = " << record.Get<Float>(0).value() << endl;
+    cout << "pid = " << record.Get<Int>(1).value() << endl;
+    cout << "name = " << record.Get<Char>(2).value() << endl;
+    cout << "identity = " << record.Get<Char>(3).value() << endl;
+    cout << "age = " << record.Get<Int>(4).value() << endl;
 }
 
 int main() {
@@ -58,22 +39,12 @@ int main() {
     
     API::CreateTable("person", column_names, types, sizes, is_uniques, "pid");
     
-    cout << "Output Inserted Content" << endl;
-    
-    for (int i = 1300; i <= 2299; i++) {
+    for (int i = 1; i <= 20; i++) {
         string height = to_string(i) + ".0";
         string pid = to_string(i - 1300);
-        string name = RandomName();
-        string identity = RandomUniqueString();
-        string age = pid;
-        
-        cout << "-----------" << endl;
-        cout << "height = " << height << endl;
-        cout << "pid = " << pid << endl;
-        cout << "name = " << name << endl;
-        cout << "identity = " << identity << endl;
-        cout << "age = " << age << endl;
-        
+        string name = "\"Person" + to_string(i) + "\"";
+        string identity = "\"0000" + to_string(i) + "\"";
+        string age = to_string(i);
         API::Insert("person", {height, pid, name, identity, age});
     }
     
@@ -81,16 +52,14 @@ int main() {
     API::CreateIndex("idx_identity", "person", "identity");
     API::CreateIndex("idx_age", "person", "age");
 
-    cout << "Output Disk Content" << endl;
+    API::Select("person", {{"age", PredicateIdentifier::GREATER, "9"}}, PutRecord);
+    API::Select("person", {{"name", PredicateIdentifier::EQUAL, "\"Person15\""}}, PutRecord);
+    API::Select("person", {{"height", PredicateIdentifier::LESS_OR_EQUAL, "10"}}, PutRecord);
     
-    API::Select("person", {}, [](const Record &record) {
-        cout << "-----------" << endl;
-        cout << "height = " << record.Get<Float>(0).value() << endl;
-        cout << "pid = " << record.Get<Int>(1).value() << endl;
-        cout << "name = " << record.Get<Char>(2).value() << endl;
-        cout << "identity = " << record.Get<Char>(3).value() << endl;
-        cout << "age = " << record.Get<Int>(4).value() << endl;
-    });
+    API::DropIndex("idx_height");
+    API::DropIndex("idx_identity");
+    API::DropIndex("idx_age");
     
+    API::DropTable("person");
     return 0;
 }

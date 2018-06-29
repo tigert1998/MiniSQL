@@ -260,7 +260,6 @@ void API::Select(const std::string &table_name, const std::vector<Predicate> &pr
     catalog_manager.set_root_path(root_path);
     index_manager.set_root_path(root_path);
     auto table = catalog_manager.GetTable(table_name);
-    RecordManager record_manager(table, root_path + "/" + table_name + ".data");
     
     for (int i = 0; i < predicates.size(); i++) {
         auto predicate = predicates[i];
@@ -286,6 +285,7 @@ void API::Select(const std::string &table_name, const std::vector<Predicate> &pr
         return;
     }
     
+    RecordManager record_manager(table, root_path + "/" + table_name + ".data");
     record_manager.TraverseRecordsWithOffsets([&](uint64_t offset, Record record) {
         if (Satisfy(record, predicates)) yield(record);
     });
@@ -303,7 +303,7 @@ void API::CreateTable(const std::string &table_name, const std::vector<std::stri
         column.is_unique = is_uniques[i];
         column.is_indexed = column.is_primary = false;
         if (column.title == primary_key) {
-            column.is_primary = true;
+            column.is_primary = column.is_unique = column.is_indexed = true;
             primary_visited = true;
         }
         table.columns.push_back(column);
