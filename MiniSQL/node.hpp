@@ -118,8 +118,9 @@ Node<Char>::Node(int key_size, const char *data): key_size(key_size) {
         keys[i] = Char(key_size, data + sizeof(uint64_t));
         data += sizeof(uint64_t) + key_size;
     }
-    children.back() = Uint64_t(data).value();
-    if (!is_internal)
+    if (total_ >= 1)
+        children.back() = Uint64_t(data).value();
+    if (!is_internal && total_ >= 1)
         keys.back() = Char(key_size, data + sizeof(uint64_t));
 }
 
@@ -138,8 +139,9 @@ Node<KeyType>::Node(int key_size, const char *data): key_size(key_size) {
         keys[i] = KeyType(data + sizeof(uint64_t));
         data += sizeof(uint64_t) + key_size;
     }
-    children.back() = Uint64_t(data).value();
-    if (!is_internal)
+    if (total_ >= 1)
+        children.back() = Uint64_t(data).value();
+    if (!is_internal && total_ >= 1)
         keys.back() = KeyType(data + sizeof(uint64_t));
 }
 
@@ -157,7 +159,7 @@ const char *Node<KeyType>::raw_value() const {
         _data += sizeof(uint64_t) + key_size;
     }
     memcpy(_data, Uint64_t(children.back()).raw_value(), sizeof(uint64_t));
-    if (!is_internal)
+    if (!is_internal && !keys.empty())
         memcpy(_data + sizeof(uint64_t), keys.back().raw_value(), key_size);
     return data;
 }

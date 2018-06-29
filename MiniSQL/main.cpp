@@ -52,16 +52,16 @@ int main() {
     API::CreateIndex("idx_identity", "person", "identity");
     API::CreateIndex("idx_age", "person", "age");
 
-    API::Delete("person", {{"age", PredicateIdentifier::LESS_OR_EQUAL, "14"}});
+    API::Delete("person", {});
     
     API::Select("person", {{"age", PredicateIdentifier::GREATER, "9"}}, PutRecord);
     API::Select("person", {{"name", PredicateIdentifier::EQUAL, "\"Person15\""}}, PutRecord);
     API::Select("person", {{"height", PredicateIdentifier::LESS_OR_EQUAL, "10"}}, PutRecord);
 
-    API::DropIndex("idx_height");
-    API::DropIndex("idx_identity");
-    API::DropIndex("idx_age");
+    // API::DropIndex("idx_height");
+    // API::DropIndex("idx_identity");
+    // API::DropIndex("idx_age");
 
-    API::DropTable("person");
+    // API::DropTable("person");
     return 0;
 }

@@ -148,6 +148,8 @@ void RecordManager::Erase(uint64_t offset, Record record) {
     assert(i < node.total());
     node.records.erase(node.records.begin() + i);
     if (node.total() == 0) {
+        if (offset == valid_head_offset())
+            set_valid_head_offset(node.next);
         node.next = invalid_head_offset();
         set_invalid_head_offset(offset);
         WriteBlockAt(offset, node);
@@ -164,6 +166,8 @@ void RecordManager::Erase(uint64_t offset, KeyType key, std::function<bool(KeyTy
     assert(i < node.total());
     node.records.erase(node.records.begin() + i);
     if (node.total() == 0) {
+        if (offset == valid_head_offset())
+            set_valid_head_offset(node.next);
         node.next = invalid_head_offset();
         set_invalid_head_offset(offset);
         WriteBlockAt(offset, node);

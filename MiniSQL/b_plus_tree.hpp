@@ -269,6 +269,12 @@ void BPlusTree<KeyType>::EraseRecursively(uint64_t address, KeyType key) {
 template <typename KeyType>
 void BPlusTree<KeyType>::Erase(KeyType key) {
     EraseRecursively(root_offset(), key);
+    auto offset = root_offset();
+    auto node = GetNodeAt(offset);
+    if (!node.is_internal && node.keys.size() == 0) {
+        set_root_offset(0);
+        DeleteBlock(offset);
+    }
 }
 
 template <typename KeyType>
