@@ -36,9 +36,9 @@ int main() {
     };
     vector<int> sizes = {4, 4, 33, 129, 4};
     vector<bool> is_uniques = {true, false, false, true, true};
-    
+
     API::CreateTable("person", column_names, types, sizes, is_uniques, "pid");
-    
+
     for (int i = 1; i <= 20; i++) {
         string height = to_string(i) + ".0";
         string pid = to_string(i - 1300);
@@ -47,19 +47,21 @@ int main() {
         string age = to_string(i);
         API::Insert("person", {height, pid, name, identity, age});
     }
-    
+
     API::CreateIndex("idx_height", "person", "height");
     API::CreateIndex("idx_identity", "person", "identity");
     API::CreateIndex("idx_age", "person", "age");
 
+    API::Delete("person", {{"age", PredicateIdentifier::LESS_OR_EQUAL, "14"}});
+    
     API::Select("person", {{"age", PredicateIdentifier::GREATER, "9"}}, PutRecord);
     API::Select("person", {{"name", PredicateIdentifier::EQUAL, "\"Person15\""}}, PutRecord);
     API::Select("person", {{"height", PredicateIdentifier::LESS_OR_EQUAL, "10"}}, PutRecord);
-    
+
     API::DropIndex("idx_height");
     API::DropIndex("idx_identity");
     API::DropIndex("idx_age");
-    
+
     API::DropTable("person");
     return 0;
 }

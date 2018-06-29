@@ -336,6 +336,8 @@ void API::Insert(const std::string &table_name, const std::vector<std::string> &
     using namespace std;
     CatalogManager &catalog_manager = CatalogManager::shared;
     catalog_manager.set_root_path(root_path);
+    IndexManager &index_manager = IndexManager::shared;
+    index_manager.set_root_path(root_path);
     auto table = catalog_manager.GetTable(table_name);
     auto record = Record(table);
     record.Reset();
@@ -354,6 +356,7 @@ void API::Insert(const std::string &table_name, const std::vector<std::string> &
         }
     }
     RecordManager record_manager(table, root_path + "/" + table_name + ".data");
-    record_manager.Insert(record);
+    auto offset = record_manager.Insert(record);
+    index_manager.InsertRecordIntoIndices(record, offset);
 }
 
